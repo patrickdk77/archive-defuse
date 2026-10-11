@@ -1,0 +1,38 @@
+name: publish
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-slim
+    permissions:
+      # contents: write creates the GitHub release; id-token: write is npm trusted publishing.
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: Take the version from the tag
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: Require npm 11.15 or newer
+        run: node -e "const [a,b]=process.argv[1].split('.').map(Number); if (a<11||(a===11&&b<15)) { console.error('npm '+process.argv[1]+' is too old for staged publishing'); process.exit(1) }" "$(npm --version)"
+      - run: npm ci --ignore-scripts
+      - name: Install python3
+        # The tests read the writers' output back with Python's zipfile, tarfile, gzip and bz2, and fail when it is missing.
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update
+          $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3
+          python3 --version
+      # prepublishOnly cleans, builds and runs the whole suite before anything is staged.
+      - run: npm stage publish
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes

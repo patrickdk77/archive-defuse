@@ -1,0 +1,36 @@
+The files in this directory come from lzma1 by Filip Seman, https://github.com/xseman/lzma1, under the Apache
+License 2.0 in LICENSE here. They come from the fork on branch feat/lzma2-decoder at commit
+19f319c68ed898619393a579d126ce06e3d5d704, which is lzma1 0.4.0 plus raw LZMA1 and LZMA2 decoding. lzma1 ports them
+from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+
+Copied: crc32.ts, hash234.ts, hc4.ts, header.ts, lz-decoder.ts, lz-encoder.ts, lzma-coder.ts, lzma-decoder.ts,
+lzma-encoder.ts, lzma-encoder-fast.ts, lzma2-decoder.ts, range-coder.ts, range-decoder.ts and range-encoder.ts.
+
+lzma-defuse changed them as follows, and the files then moved into archive-defuse unchanged.
+
+In every file:
+- Biome reformatted it to this package's style, with spaces for tabs and single quotes for double.
+- Imports drop the ".js" suffix, since this package compiles to CommonJS.
+- A first line names lzma1, its license and this NOTICE.
+
+In lzma-decoder.ts and lzma-encoder.ts, the box-drawing characters around section comments are now "--", since this
+package keeps its files ASCII.
+
+In hc4.ts, lz-decoder.ts, lz-encoder.ts, lzma-encoder.ts, lzma2-decoder.ts and range-encoder.ts, each function that
+assigned to its own parameter now copies the parameter into a local variable first. This package's lint rules forbid
+the assignment. The arithmetic is the same.
+
+In lzma-encoder-fast.ts:
+- getNextSymbol() throws if no matches were read, where it used a non-null assertion.
+- A chained assignment is now two assignments.
+
+In lzma-encoder.ts, the empty body of the loop in encode() holds a comment.
+
+In lzma2-decoder.ts:
+- The file defines INPUT_MARGIN itself instead of importing it from alone-decoder.ts, which this package does not
+  copy. The value is still 64.
+- A private method, currentLzma(), returns the LZMA decoder or throws "LZMA2 chunk without properties". It replaces
+  two non-null assertions.
+
+crc32.ts, hash234.ts, header.ts, lzma-coder.ts, lzma-decoder.ts, range-coder.ts and range-decoder.ts have no changes
+beyond formatting and imports.

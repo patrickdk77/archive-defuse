@@ -1,0 +1,873 @@
+{
+  "generatedBy": "scripts/make-lzma-fixtures.js",
+  "cases": {
+    "xz-crc64.xz": {
+      "status": "clean",
+      "content": 2422166374
+    },
+    "xz-crc32.xz": {
+      "status": "clean",
+      "content": 2422166374
+    },
+    "xz-sha256.xz": {
+      "status": "clean",
+      "content": 2422166374
+    },
+    "xz-no-check.xz": {
+      "status": "clean",
+      "findings": [
+        "STRUCTURE/NO_CHECK"
+      ]
+    },
+    "xz-empty.xz": {
+      "status": "clean",
+      "entries": 1
+    },
+    "xz-filter-x86.xz": {
+      "status": "clean",
+      "content": 4255623080
+    },
+    "xz-filter-powerpc.xz": {
+      "status": "clean",
+      "content": 71337854
+    },
+    "xz-filter-ia64.xz": {
+      "status": "clean",
+      "content": 4047171894
+    },
+    "xz-filter-arm.xz": {
+      "status": "clean",
+      "content": 4255623080
+    },
+    "xz-filter-armthumb.xz": {
+      "status": "clean",
+      "content": 2190628627
+    },
+    "xz-filter-sparc.xz": {
+      "status": "clean",
+      "content": 1758210258
+    },
+    "xz-filter-delta.xz": {
+      "status": "clean",
+      "content": 3441312179
+    },
+    "xz-filter-x86-start.xz": {
+      "status": "clean",
+      "content": 4255623080
+    },
+    "xz-three-deltas.xz": {
+      "status": "clean",
+      "content": 4255623080
+    },
+    "xz-filter-arm64.xz": {
+      "status": "clean",
+      "content": 4092332943
+    },
+    "xz-filter-arm64-start.xz": {
+      "status": "clean",
+      "content": 4092332943
+    },
+    "xz-filter-riscv.xz": {
+      "status": "clean",
+      "content": 3174107898
+    },
+    "xz-two-blocks.xz": {
+      "status": "clean",
+      "content": 2345158140
+    },
+    "xz-block-sizes.xz": {
+      "status": "clean",
+      "content": 2262519638
+    },
+    "xz-block-size-wrong.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/SIZE_MISMATCH"
+      ]
+    },
+    "xz-two-streams.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/MULTIPLE_STREAMS"
+      ],
+      "content": 2345158140
+    },
+    "xz-stream-padding.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/STREAM_PADDING",
+        "STRUCTURE/MULTIPLE_STREAMS"
+      ]
+    },
+    "xz-bad-padding.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/BAD_PADDING"
+      ]
+    },
+    "xz-trailing.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/TRAILING_BYTES"
+      ]
+    },
+    "xz-trailing-zip.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/TRAILING_BYTES",
+        "STRUCTURE/POLYGLOT"
+      ]
+    },
+    "xz-index-count.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/INDEX_MISMATCH"
+      ]
+    },
+    "xz-index-size.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/INDEX_MISMATCH"
+      ]
+    },
+    "xz-index-huge.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/INDEX_MISMATCH"
+      ]
+    },
+    "xz-index-padding.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/BAD_PADDING"
+      ]
+    },
+    "xz-backward-size.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/INDEX_MISMATCH"
+      ]
+    },
+    "xz-footer-flags.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/HEADER_MISMATCH"
+      ]
+    },
+    "xz-block-padding.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/BAD_PADDING"
+      ]
+    },
+    "xz-unknown-check.xz": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/UNKNOWN_CHECK"
+      ]
+    },
+    "xz-bad-check.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "xz-bad-header-crc.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "xz-bad-block-header-crc.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "xz-bad-index-crc.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "xz-bad-footer-magic.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "xz-truncated.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/TRUNCATED"
+      ]
+    },
+    "xz-data-error.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/DATA_ERROR"
+      ]
+    },
+    "xz-unknown-filter.xz": {
+      "status": "rejected",
+      "findings": [
+        "COMPRESSION/UNSUPPORTED_METHOD"
+      ]
+    },
+    "xz-delta-last.xz": {
+      "status": "rejected",
+      "findings": [
+        "COMPRESSION/UNSUPPORTED_FEATURE"
+      ]
+    },
+    "xz-reserved-flags.xz": {
+      "status": "rejected",
+      "findings": [
+        "COMPRESSION/UNSUPPORTED_FEATURE"
+      ]
+    },
+    "xz-vli-zero.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "xz-big-dictionary.xz": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/DICTIONARY_SIZE"
+      ]
+    },
+    "xz-declared-huge.xz": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/DECOMPRESSED_SIZE"
+      ]
+    },
+    "xz-lzma2-no-end.xz": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/TRUNCATED"
+      ]
+    },
+    "xz-bomb.xz": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/RATIO"
+      ]
+    },
+    "xz-nested-bomb.xz": {
+      "status": "clean",
+      "nested": true
+    },
+    "xz-tar.txz": {
+      "status": "clean",
+      "sniffed": "application/x-tar"
+    },
+    "lzma-unknown-size.lzma": {
+      "status": "clean",
+      "content": 1866359118
+    },
+    "lzma-known-size-eopm.lzma": {
+      "status": "clean",
+      "content": 1866359118
+    },
+    "lzma-size-too-big.lzma": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/SIZE_MISMATCH"
+      ]
+    },
+    "lzma-size-too-small.lzma": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/DATA_ERROR"
+      ]
+    },
+    "lzma-truncated.lzma": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/TRUNCATED"
+      ]
+    },
+    "lzma-trailing.lzma": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/TRAILING_BYTES"
+      ]
+    },
+    "lzma-raw-known.lzma": {
+      "status": "clean",
+      "content": 1866359118
+    },
+    "lzma-big-dictionary.lzma": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/DICTIONARY_SIZE"
+      ]
+    },
+    "lzma-declared-huge.lzma": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/DECOMPRESSED_SIZE"
+      ]
+    },
+    "lzma-bomb.lzma": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/RATIO"
+      ]
+    },
+    "7z-copy.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-lzma-solid.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-lzma2-solid.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-deflate.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-deflate64.7z": {
+      "status": "clean",
+      "entries": 1,
+      "names": [
+        "far-copy.bin"
+      ],
+      "kept": [
+        21726274
+      ]
+    },
+    "7z-empty-id-copy.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-x86.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-x86-short-id.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-powerpc.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-ia64.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-arm.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-armthumb.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-sparc.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-delta.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-arm64.7z": {
+      "status": "clean",
+      "entries": 1
+    },
+    "7z-riscv.7z": {
+      "status": "clean",
+      "entries": 1
+    },
+    "7z-bcj2.7z": {
+      "status": "clean",
+      "entries": 1,
+      "content": 1682471710
+    },
+    "7z-aes.7z": {
+      "status": "strippable",
+      "password": [
+        "wrong",
+        "right password"
+      ],
+      "findings": [
+        "ENCRYPTED/DECRYPTED",
+        "ENCRYPTED/AES_256"
+      ],
+      "entries": 4
+    },
+    "7z-encrypted-header.7z": {
+      "status": "strippable",
+      "password": "hdr",
+      "findings": [
+        "ENCRYPTED/HEADER"
+      ],
+      "entries": 1
+    },
+    "7z-encrypted-header-nopw.7z": {
+      "status": "rejected",
+      "findings": [
+        "ENCRYPTED/PASSWORD_REQUIRED"
+      ]
+    },
+    "7z-encoded-header.7z": {
+      "status": "clean",
+      "entries": 1
+    },
+    "7z-encoded-header-huge.7z": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/TOTAL_DECOMPRESSED_SIZE"
+      ]
+    },
+    "7z-aes-nopw.7z": {
+      "status": "rejected",
+      "findings": [
+        "ENCRYPTED/PASSWORD_REQUIRED"
+      ]
+    },
+    "7z-aes-bad-crcs.7z": {
+      "status": "strippable",
+      "password": "pw",
+      "findings": [
+        "CORRUPTED/ENTRY_DATA",
+        "ENCRYPTED/DECRYPTED"
+      ],
+      "names": [
+        "f0.txt",
+        "f1.txt"
+      ]
+    },
+    "7z-aes-cycles-power-30.7z": {
+      "status": "rejected",
+      "password": "x",
+      "findings": [
+        "COMPRESSION/UNSUPPORTED_FEATURE"
+      ]
+    },
+    "7z-ppmd.7z": {
+      "status": "rejected",
+      "findings": [
+        "COMPRESSION/UNSUPPORTED_METHOD"
+      ]
+    },
+    "7z-bzip2.7z": {
+      "status": "clean",
+      "entries": 4
+    },
+    "7z-bzip2-corrupt.7z": {
+      "status": "strippable",
+      "findings": [
+        "CORRUPTED/ENTRY_DATA"
+      ]
+    },
+    "7z-entry-crc.7z": {
+      "status": "strippable",
+      "findings": [
+        "CORRUPTED/ENTRY_DATA"
+      ],
+      "entries": 2
+    },
+    "7z-folder-data-error.7z": {
+      "status": "strippable",
+      "findings": [
+        "CORRUPTED/ENTRY_DATA"
+      ]
+    },
+    "7z-truncated.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/TRUNCATED"
+      ]
+    },
+    "7z-header-crc.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "7z-start-header-crc.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/CHECK_FAILED"
+      ]
+    },
+    "7z-not-7z.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-empty-start-header.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/EMPTY_START_HEADER"
+      ],
+      "entries": 4
+    },
+    "7z-empty.7z": {
+      "status": "clean",
+      "entries": 0
+    },
+    "7z-dirs-only.7z": {
+      "status": "clean",
+      "entries": 3
+    },
+    "7z-no-names.7z": {
+      "status": "clean",
+      "entries": 2
+    },
+    "7z-unknown-property.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/UNKNOWN_PROPERTY"
+      ]
+    },
+    "7z-archive-properties.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/UNKNOWN_PROPERTY"
+      ]
+    },
+    "7z-sfx-prefix.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/LEADING_BYTES",
+        "STRUCTURE/POLYGLOT"
+      ]
+    },
+    "7z-leading-text.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/LEADING_BYTES"
+      ]
+    },
+    "7z-trailing.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/TRAILING_BYTES"
+      ]
+    },
+    "7z-hidden-gap.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/HIDDEN_DATA"
+      ]
+    },
+    "7z-pdf-polyglot.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/POLYGLOT"
+      ]
+    },
+    "7z-overlap.7z": {
+      "status": "strippable",
+      "findings": [
+        "STRUCTURE/OVERLAP"
+      ]
+    },
+    "7z-traversal.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/TRAVERSAL"
+      ],
+      "names": [
+        "etc/passwd",
+        "a/b.txt",
+        "ok.txt"
+      ]
+    },
+    "7z-traversal-backslash.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/TRAVERSAL",
+        "NAME/BACKSLASH"
+      ],
+      "names": [
+        "evil.txt",
+        "a/b.txt"
+      ]
+    },
+    "7z-absolute.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/ABSOLUTE"
+      ],
+      "names": [
+        "etc/cron.d/x",
+        "windows/x.dll"
+      ]
+    },
+    "7z-drive-letter.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/DRIVE_LETTER"
+      ],
+      "names": [
+        "Windows/x.dll",
+        "rel.txt"
+      ]
+    },
+    "7z-control-chars.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/CONTROL_CHARACTER"
+      ],
+      "names": [
+        "bad_name.txt",
+        "exe_txt.exe"
+      ]
+    },
+    "7z-lone-surrogate.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/ENCODING"
+      ],
+      "names": [
+        "a\ufffdb"
+      ]
+    },
+    "7z-embedded-nul.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-duplicate.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/DUPLICATE"
+      ],
+      "names": [
+        "same.txt"
+      ],
+      "kept": [
+        2167245710
+      ]
+    },
+    "7z-case-collision.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/CASE_COLLISION"
+      ],
+      "names": [
+        "README.txt"
+      ]
+    },
+    "7z-nfkd-collision.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/NORMALIZATION_COLLISION"
+      ],
+      "names": [
+        "file.txt",
+        "caf\u00e9.txt"
+      ]
+    },
+    "7z-file-dir-clash.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/FILE_DIRECTORY_CLASH"
+      ],
+      "names": [
+        "a/b.txt"
+      ]
+    },
+    "7z-proto-names.7z": {
+      "status": "strippable",
+      "findings": [
+        "NAME/FILE_DIRECTORY_CLASH"
+      ],
+      "names": [
+        "constructor",
+        "toString",
+        "hasOwnProperty",
+        "__proto__/x"
+      ]
+    },
+    "7z-symlink.7z": {
+      "status": "clean",
+      "findings": [
+        "LINK/SYMLINK"
+      ],
+      "names": [
+        "lib/current",
+        "lib/v1"
+      ]
+    },
+    "7z-symlink-escape.7z": {
+      "status": "strippable",
+      "findings": [
+        "LINK/OUTSIDE"
+      ],
+      "keepLinks": true,
+      "names": [
+        "ok",
+        "file.txt"
+      ]
+    },
+    "7z-symlink-chain.7z": {
+      "status": "strippable",
+      "findings": [
+        "LINK/OUTSIDE"
+      ],
+      "keepLinks": true
+    },
+    "7z-symlink-loop.7z": {
+      "status": "strippable",
+      "findings": [
+        "LINK/OUTSIDE"
+      ],
+      "keepLinks": true
+    },
+    "7z-through-link.7z": {
+      "status": "strippable",
+      "findings": [
+        "LINK/THROUGH_LINK"
+      ],
+      "keepLinks": true
+    },
+    "7z-reparse-point.7z": {
+      "status": "strippable",
+      "findings": [
+        "LINK/SYMLINK",
+        "LINK/OUTSIDE"
+      ]
+    },
+    "7z-special-files.7z": {
+      "status": "strippable",
+      "findings": [
+        "SPECIAL/DEVICE",
+        "SPECIAL/FIFO",
+        "SPECIAL/SOCKET"
+      ],
+      "names": []
+    },
+    "7z-anti.7z": {
+      "status": "strippable",
+      "findings": [
+        "SPECIAL/ANTI_ITEM"
+      ],
+      "names": [
+        "kept.txt"
+      ]
+    },
+    "7z-permissions.7z": {
+      "status": "strippable",
+      "findings": [
+        "PERMISSIONS/SETUID",
+        "PERMISSIONS/SETGID",
+        "PERMISSIONS/STICKY"
+      ],
+      "attribs": [
+        2179825664
+      ]
+    },
+    "7z-type-mismatch.7z": {
+      "status": "clean",
+      "findings": [
+        "ENTRY/TYPE_MISMATCH"
+      ]
+    },
+    "7z-times.7z": {
+      "status": "strippable",
+      "stripMetadata": true,
+      "findings": [
+        "METADATA/STRIPPED"
+      ]
+    },
+    "7z-many-entries.7z": {
+      "status": "rejected",
+      "limits": {
+        "entries": 10
+      },
+      "findings": [
+        "LIMIT/ENTRY_COUNT"
+      ]
+    },
+    "7z-declared-huge.7z": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/TOTAL_DECOMPRESSED_SIZE"
+      ]
+    },
+    "7z-entry-huge.7z": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/DECOMPRESSED_SIZE"
+      ]
+    },
+    "7z-big-dictionary.7z": {
+      "status": "rejected",
+      "limits": {
+        "decompressedBytes": 2147483648
+      },
+      "findings": [
+        "LIMIT/DICTIONARY_SIZE"
+      ]
+    },
+    "7z-coder-loop.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-huge-pack-count.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-huge-folder-count.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-huge-file-count.7z": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/ENTRY_COUNT"
+      ]
+    },
+    "7z-huge-coder-count.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-huge-property-size.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-huge-substreams.7z": {
+      "status": "rejected",
+      "findings": [
+        "LIMIT/ENTRY_COUNT"
+      ]
+    },
+    "7z-two-empty-stream.7z": {
+      "status": "rejected",
+      "findings": [
+        "CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    "7z-lzma-truncated.7z": {
+      "status": "strippable",
+      "findings": [
+        "CORRUPTED/ENTRY_DATA"
+      ]
+    }
+  }
+}

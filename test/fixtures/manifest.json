@@ -1,0 +1,1619 @@
+{
+  "about": "What each fixture is, the plugins and options it runs with, and the verdicts inspect and disarm must return. findings lists every finding of the inspection in order, as \"action CATEGORY/DETAIL\", with \" in \" and the path of files for a finding from inside an entry. Plugins: \"keep\" keeps every entry, \"archive\" is archivePlugin(). On a Node without zstd, the zstd fixtures reject with COMPRESSION/UNAVAILABLE instead.",
+  "cases": [
+    {
+      "file": "zip-clean.zip",
+      "about": "Two text files and a folder, nothing to remove.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-clean.zip",
+      "about": "The same archive with no plugin, so each file is removed as one no plugin takes.",
+      "plugins": [],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip ENTRY/NO_PLUGIN",
+        "strip ENTRY/NO_PLUGIN"
+      ]
+    },
+    {
+      "file": "zip-traversal.zip",
+      "about": "Names that climb out of the extraction folder, at the start and in the middle.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/TRAVERSAL",
+        "strip NAME/TRAVERSAL",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-absolute.zip",
+      "about": "An absolute path and a UNC path.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/ABSOLUTE",
+        "strip NAME/ABSOLUTE",
+        "strip NAME/BACKSLASH",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-drive-letter.zip",
+      "about": "Names that start with a drive letter, with either separator.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/DRIVE_LETTER",
+        "strip NAME/ABSOLUTE",
+        "strip NAME/DRIVE_LETTER",
+        "strip NAME/ABSOLUTE",
+        "strip NAME/BACKSLASH",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-backslash.zip",
+      "about": "Backslashes as separators, one of them climbing out.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/BACKSLASH",
+        "strip NAME/TRAVERSAL",
+        "strip NAME/BACKSLASH",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-dot-segments.zip",
+      "about": "Names with \".\" and empty parts, and a \"..\" part with a trailing space that Windows drops.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/EMPTY_SEGMENT",
+        "strip NAME/EMPTY_SEGMENT",
+        "strip NAME/TRAVERSAL",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-control-characters.zip",
+      "about": "A name with a control character and one with a right-to-left override.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/CONTROL_CHARACTER",
+        "strip NAME/CONTROL_CHARACTER",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/TYPE_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-windows-reserved.zip",
+      "about": "A device name, a colon that opens an alternate data stream, and a trailing dot.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/WINDOWS_RESERVED",
+        "strip NAME/WINDOWS_RESERVED",
+        "strip NAME/WINDOWS_RESERVED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-empty-name.zip",
+      "about": "An entry with an empty name.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/EMPTY",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-duplicate.zip",
+      "about": "Two entries with one name and different content.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/DUPLICATE",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-case-collision.zip",
+      "about": "Two names that differ only in case.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/CASE_COLLISION",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-normalization-collision.zip",
+      "about": "Two names that differ only in Unicode normalization.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/NORMALIZATION_COLLISION",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-file-directory-clash.zip",
+      "about": "A file where another entry needs a folder.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/FILE_DIRECTORY_CLASH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-long-name.zip",
+      "about": "A name part longer than 255 bytes.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info NAME/TOO_LONG",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-symlink.zip",
+      "about": "Unix symbolic links: two that leave the folder and one that stays inside.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info LINK/SYMLINK",
+        "strip LINK/OUTSIDE",
+        "info LINK/SYMLINK",
+        "strip LINK/OUTSIDE",
+        "info LINK/SYMLINK",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-through-link.zip",
+      "about": "A link to an outside folder, then a file written through it.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info LINK/SYMLINK",
+        "strip LINK/OUTSIDE",
+        "strip LINK/THROUGH_LINK"
+      ]
+    },
+    {
+      "file": "zip-link-chain.zip",
+      "about": "Two links that only leave the folder when one is followed through the other.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info LINK/SYMLINK",
+        "info LINK/SYMLINK",
+        "strip LINK/OUTSIDE"
+      ]
+    },
+    {
+      "file": "zip-special-files.zip",
+      "about": "Character and block devices, a named pipe and a socket.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip SPECIAL/DEVICE",
+        "strip SPECIAL/DEVICE",
+        "strip SPECIAL/FIFO",
+        "strip SPECIAL/SOCKET"
+      ]
+    },
+    {
+      "file": "zip-setuid.zip",
+      "about": "Setuid and setgid files and a setgid folder.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip PERMISSIONS/SETUID",
+        "strip PERMISSIONS/SETGID",
+        "strip PERMISSIONS/SETGID",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-zipcrypto.zip",
+      "about": "An entry with traditional encryption, opened with the second password of two.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "password": [
+          "wrong",
+          "correct horse"
+        ]
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENCRYPTED/ZIPCRYPTO",
+        "strip ENCRYPTED/DECRYPTED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-zipcrypto.zip",
+      "about": "The same entry with no password.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "info ENCRYPTED/ZIPCRYPTO",
+        "reject ENCRYPTED/PASSWORD_REQUIRED"
+      ]
+    },
+    {
+      "file": "zip-empty-password.zip",
+      "about": "An entry encrypted with the empty password.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENCRYPTED/ZIPCRYPTO",
+        "strip ENCRYPTED/EMPTY_PASSWORD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-aes.zip",
+      "about": "WinZip AES-256 (AE-2) and AES-128 (AE-1) entries.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "password": "battery staple"
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENCRYPTED/AES_256",
+        "strip ENCRYPTED/DECRYPTED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENCRYPTED/AES_128",
+        "strip ENCRYPTED/DECRYPTED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-aes.zip",
+      "about": "The same entries with a wrong password.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "password": "wrong"
+      },
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "info ENCRYPTED/AES_256",
+        "reject ENCRYPTED/PASSWORD_REQUIRED",
+        "info ENCRYPTED/AES_128",
+        "reject ENCRYPTED/PASSWORD_REQUIRED"
+      ]
+    },
+    {
+      "file": "zip-strong-encryption.zip",
+      "about": "PKWARE strong encryption, which this package cannot open.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject ENCRYPTED/UNSUPPORTED"
+      ]
+    },
+    {
+      "file": "zip-unsupported-method.zip",
+      "about": "A PPMd entry, a method this package has no decoder for.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject COMPRESSION/UNSUPPORTED_METHOD"
+      ]
+    },
+    {
+      "file": "zip-bzip2-zstd.zip",
+      "about": "bzip2 and zstd entries, which few readers handle.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "info COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-bzip2-zstd.zip",
+      "about": "The same entries with the unusual method set to strip, so they are compressed again with deflate.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "actionOverrides": [
+          {
+            "category": "COMPRESSION",
+            "detail": "UNUSUAL_METHOD",
+            "action": "strip"
+          }
+        ]
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "strip COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-deflate64.zip",
+      "about": "A Deflate64 entry that copies from 40,000 bytes back, which plain deflate cannot read, beside a deflate entry.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-deflate64.zip",
+      "about": "The same entries with the unusual method set to strip, so the Deflate64 entry is compressed again with deflate.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "actionOverrides": [
+          {
+            "category": "COMPRESSION",
+            "detail": "UNUSUAL_METHOD",
+            "action": "strip"
+          }
+        ]
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-lzma-xz.zip",
+      "about": "An LZMA entry with an end marker and an XZ entry, which 7-Zip reads.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "info COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-lzma-xz.zip",
+      "about": "The same entries with the unusual method set to strip, so they are compressed again with deflate.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "actionOverrides": [
+          {
+            "category": "COMPRESSION",
+            "detail": "UNUSUAL_METHOD",
+            "action": "strip"
+          }
+        ]
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED",
+        "strip COMPRESSION/UNUSUAL_METHOD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-several-end-records.zip",
+      "about": "A second end record inside the first one's comment.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/SEVERAL_END_RECORDS",
+        "strip STRUCTURE/HEADER_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-end-record-in-entry.zip",
+      "about": "An entry whose stored data holds a central directory and an end record whose comment covers the rest of the file. The rewrite compresses that entry afresh.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/SEVERAL_END_RECORDS",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-local-mismatch.zip",
+      "about": "A local header that names another file than the central directory.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/HEADER_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-overlap.zip",
+      "about": "Two directory entries that share one local header and its data.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/OVERLAP",
+        "strip NAME/DUPLICATE",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-prepended.zip",
+      "about": "An executable stub in front of the archive, with offsets that count it.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/LEADING_BYTES",
+        "strip STRUCTURE/POLYGLOT",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-offset-shift.zip",
+      "about": "A script in front of the archive, with offsets that do not count it.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/OFFSET_SHIFT",
+        "strip STRUCTURE/LEADING_BYTES",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-trailing.zip",
+      "about": "Bytes after the end record.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/TRAILING_BYTES",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-trailing.zip",
+      "about": "The same bytes with TRAILING_BYTES set to info, so the rewrite keeps them.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "actionOverrides": [
+          {
+            "category": "STRUCTURE",
+            "detail": "TRAILING_BYTES",
+            "action": "info"
+          }
+        ]
+      },
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info STRUCTURE/TRAILING_BYTES",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-pdf-polyglot.zip",
+      "about": "A PDF header in front of the archive, so PDF readers open it too.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/LEADING_BYTES",
+        "strip STRUCTURE/POLYGLOT",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-hidden-data.zip",
+      "about": "A local header no directory entry lists, between two entries.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/HIDDEN_DATA",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-hidden-data.zip",
+      "about": "The same with HIDDEN_DATA set to info: the rewrite cannot keep the bytes, so CONTENT_REMOVED reports them.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "actionOverrides": [
+          {
+            "category": "STRUCTURE",
+            "detail": "HIDDEN_DATA",
+            "action": "info"
+          }
+        ]
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info STRUCTURE/HIDDEN_DATA",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED",
+        "strip PROCESSING/CONTENT_REMOVED"
+      ]
+    },
+    {
+      "file": "zip-ratio-bomb.zip",
+      "about": "An entry that declares a ratio past the limit.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/RATIO"
+      ]
+    },
+    {
+      "file": "zip-size-lie.zip",
+      "about": "An entry that inflates past the size it declares.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip CORRUPTED/ENTRY_DATA",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-bad-crc.zip",
+      "about": "An entry whose CRC is wrong.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip CORRUPTED/ENTRY_DATA",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-comments.zip",
+      "about": "An archive comment and an entry comment.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info METADATA/COMMENT",
+        "info METADATA/COMMENT",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-comments.zip",
+      "about": "The same with metadata stripped.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "stripMetadata": true
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info METADATA/COMMENT",
+        "info METADATA/COMMENT",
+        "info ENTRY/PLUGIN_PASSED",
+        "info METADATA/STRIPPED"
+      ]
+    },
+    {
+      "file": "zip-unicode-path.zip",
+      "about": "A Unicode path field that names another file than the header.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/TRAVERSAL",
+        "strip NAME/UNICODE_PATH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-cp437-name.zip",
+      "about": "A non-ASCII name without the UTF-8 flag.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/ENCODING",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-extra-field.zip",
+      "about": "An extra field this package does not know.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/EXTRA_FIELD",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-zip64.zip",
+      "about": "An entry with ZIP64 sizes.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-data-descriptor.zip",
+      "about": "An entry whose sizes follow its data.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-directory-data.zip",
+      "about": "A folder entry that carries data.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/NON_FILE_DATA"
+      ]
+    },
+    {
+      "file": "zip-multi-disk.zip",
+      "about": "One part of an archive split across several files.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject STRUCTURE/MULTI_VOLUME"
+      ]
+    },
+    {
+      "file": "zip-truncated.zip",
+      "about": "An archive cut off in the middle.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    {
+      "file": "zip-many-entries.zip",
+      "about": "Twelve entries over an entry limit of ten.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "limits": {
+          "entries": 10
+        }
+      },
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/ENTRY_COUNT"
+      ]
+    },
+    {
+      "file": "zip-empty.zip",
+      "about": "An archive with no entries.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": []
+    },
+    {
+      "file": "zip-type-mismatch.zip",
+      "about": "An executable named as a JPEG.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/TYPE_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-nested.zip",
+      "about": "A .tar.gz inside a ZIP, read through the archive plugin.",
+      "plugins": [
+        "archive",
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED in inner/project.tar.gz",
+        "info LINK/SYMLINK in inner/project.tar.gz > project.tar",
+        "info ENTRY/PLUGIN_PASSED in inner/project.tar.gz > project.tar",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zip-nested.zip",
+      "about": "The same with a nesting limit of 1.",
+      "plugins": [
+        "archive",
+        "keep"
+      ],
+      "options": {
+        "limits": {
+          "nestingDepth": 1
+        }
+      },
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/NESTING_DEPTH"
+      ]
+    },
+    {
+      "file": "tar-clean.tar",
+      "about": "A folder, a file and a link inside the folder.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info LINK/SYMLINK",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-v7.tar",
+      "about": "v7 headers, which have no magic.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-gnu-long-name.tar",
+      "about": "A GNU long name.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-pax.tar",
+      "about": "A pax global comment, a long non-ASCII path, an extended attribute and a fractional time.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info METADATA/COMMENT",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-pax.tar",
+      "about": "The same with metadata stripped.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {
+        "stripMetadata": true
+      },
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info METADATA/COMMENT",
+        "info ENTRY/PLUGIN_PASSED",
+        "info METADATA/STRIPPED"
+      ]
+    },
+    {
+      "file": "tar-pax-name-mismatch.tar",
+      "about": "A pax name that climbs out, and a header name that climbs out for readers without pax.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/TRAVERSAL",
+        "info ENTRY/PLUGIN_PASSED",
+        "strip STRUCTURE/HEADER_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-hardlinks.tar",
+      "about": "A hard link, one to a missing file and one out of the folder.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info LINK/HARDLINK",
+        "info LINK/HARDLINK",
+        "strip LINK/DANGLING",
+        "info LINK/HARDLINK",
+        "strip LINK/OUTSIDE",
+        "strip LINK/DANGLING",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-symlink-escape.tar",
+      "about": "A link to an outside folder, then a file under it.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info LINK/SYMLINK",
+        "strip LINK/OUTSIDE",
+        "strip LINK/THROUGH_LINK"
+      ]
+    },
+    {
+      "file": "tar-special-files.tar",
+      "about": "Devices, a named pipe and an entry of an unknown type.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip SPECIAL/DEVICE",
+        "strip SPECIAL/DEVICE",
+        "strip SPECIAL/FIFO",
+        "strip SPECIAL/UNKNOWN_TYPE"
+      ]
+    },
+    {
+      "file": "tar-setuid.tar",
+      "about": "A setgid folder and setuid and setgid files.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip PERMISSIONS/SETGID",
+        "strip PERMISSIONS/SETUID",
+        "strip PERMISSIONS/SETGID",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-capability.tar",
+      "about": "A file with a security.capability attribute.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip PERMISSIONS/CAPABILITY",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-sparse-gnu.tar",
+      "about": "A sparse file in GNU's old format.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-sparse-pax.tar",
+      "about": "A sparse file in pax format 1.0.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-base256.tar",
+      "about": "Size and owner in GNU base-256 form.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-trailing.tar",
+      "about": "Bytes after the end of the archive.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/TRAILING_BYTES",
+        "info LINK/SYMLINK",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-hidden-entry.tar",
+      "about": "An entry after a lone zero block, which only some readers read.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/TRAILING_BYTES",
+        "strip STRUCTURE/HIDDEN_DATA",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-truncated.tar",
+      "about": "An archive cut off inside an entry.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject CORRUPTED/TRUNCATED"
+      ]
+    },
+    {
+      "file": "tar-pax-size-mismatch.tar",
+      "about": "A pax size that differs from the header size.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/HEADER_MISMATCH",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-duplicate.tar",
+      "about": "Two versions of one file, as tar -r appends them.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/DUPLICATE",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "tar-damaged-header.tar",
+      "about": "A header with a wrong checksum between two good ones.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject CORRUPTED/UNPARSEABLE"
+      ]
+    },
+    {
+      "file": "gzip-clean.txt.gz",
+      "about": "A gzip file that names its content.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "gzip-tar.tar.gz",
+      "about": "A .tar.gz read through the archive plugin.",
+      "plugins": [
+        "archive",
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "info LINK/SYMLINK in project.tar",
+        "info ENTRY/PLUGIN_PASSED in project.tar"
+      ]
+    },
+    {
+      "file": "gzip-tar.tar.gz",
+      "about": "The same with no plugin, so the tar inside is removed.",
+      "plugins": [],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject ENTRY/NO_PLUGIN"
+      ]
+    },
+    {
+      "file": "gzip-members.gz",
+      "about": "Two gzip members.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "strip STRUCTURE/MULTIPLE_STREAMS"
+      ]
+    },
+    {
+      "file": "gzip-trailing.gz",
+      "about": "Bytes after the gzip member.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "strip STRUCTURE/TRAILING_BYTES"
+      ]
+    },
+    {
+      "file": "gzip-name-traversal.gz",
+      "about": "A gzip name that climbs out.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/TRAVERSAL",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "gzip-extra-comment.gz",
+      "about": "A gzip extra field and comment.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/EXTRA_FIELD",
+        "info METADATA/COMMENT",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "gzip-ratio-bomb.gz",
+      "about": "Zeros past the ratio limit.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/RATIO"
+      ]
+    },
+    {
+      "file": "gzip-bad-crc.gz",
+      "about": "A member whose CRC is wrong.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject CORRUPTED/DATA_ERROR"
+      ]
+    },
+    {
+      "file": "bzip2-clean.bz2",
+      "about": "A bzip2 stream.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "bzip2-streams.bz2",
+      "about": "Two bzip2 streams.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "strip STRUCTURE/MULTIPLE_STREAMS"
+      ]
+    },
+    {
+      "file": "bzip2-ratio-bomb.bz2",
+      "about": "Zeros past the ratio limit.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/RATIO"
+      ]
+    },
+    {
+      "file": "bzip2-bad-crc.bz2",
+      "about": "A stream with a damaged byte.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject CORRUPTED/DATA_ERROR"
+      ]
+    },
+    {
+      "file": "zstd-clean.zst",
+      "about": "A zstd frame.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zstd-frames.zst",
+      "about": "Two zstd frames.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/MULTIPLE_STREAMS",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zstd-skippable.zst",
+      "about": "A skippable frame before the data.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/HIDDEN_DATA",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "zstd-ratio-bomb.zst",
+      "about": "Zeros past the ratio limit.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/RATIO"
+      ]
+    },
+    {
+      "file": "brotli-clean.br",
+      "about": "A Brotli stream, which has no signature.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "brotli-ratio-bomb.br",
+      "about": "Zeros past the ratio limit.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject LIMIT/RATIO"
+      ]
+    },
+    {
+      "file": "cab-clean.cab",
+      "about": "A stored folder and an MSZIP folder.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "clean",
+      "disarm": "clean",
+      "findings": [
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "cab-traversal.cab",
+      "about": "A cabinet name that climbs out.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip NAME/TRAVERSAL",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    },
+    {
+      "file": "cab-lzx.cab",
+      "about": "An LZX folder, which this package cannot decode.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject COMPRESSION/UNSUPPORTED_METHOD"
+      ]
+    },
+    {
+      "file": "cab-continued.cab",
+      "about": "A cabinet that continues in another file.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "rejected",
+      "disarm": "rejected",
+      "findings": [
+        "reject STRUCTURE/MULTI_VOLUME"
+      ]
+    },
+    {
+      "file": "cab-bad-checksum.cab",
+      "about": "A data block whose checksum is wrong.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip CORRUPTED/ENTRY_DATA"
+      ]
+    },
+    {
+      "file": "cab-trailing.cab",
+      "about": "Bytes after the cabinet.",
+      "plugins": [
+        "keep"
+      ],
+      "options": {},
+      "inspect": "strippable",
+      "disarm": "defused",
+      "findings": [
+        "strip STRUCTURE/TRAILING_BYTES",
+        "info ENTRY/PLUGIN_PASSED"
+      ]
+    }
+  ]
+}
