@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 - 2026-10-11
+
+- `detectArchive` and `detectArchiveSource` tell a router whether archive-defuse reads a file, in which format and at which offset. They answer from the format selection the inspection runs, and `archivePlugin` accepts exactly what they claim.
+- Brotli has no signature, so a file counts as Brotli only when its name or declared type says so and it decodes as one stream. `archivePlugin` no longer takes a file as Brotli by its content alone, since a one-byte text file such as `5` decodes as an empty stream.
+- `createArchive`, `createArchiveStream` and `createArchiveBytes` take `streaming: true` for ZIP. Each file is deflated as its data arrives, with its CRC and sizes in a data descriptor after it, and nothing goes to a temporary file.
+- Small chunks of an entry are gathered into 64 KiB pieces before they are compressed. A 26 MB sheet given one row per chunk took 21 seconds and takes 1.2 now.
+
 ## 0.1.0 - 2026-10-11
 
 First release.

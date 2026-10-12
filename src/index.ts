@@ -1,3 +1,4 @@
+export { detectArchive, detectArchiveSource } from './detect';
 export { disarmArchive, disarmArchiveSource, inspectArchive, inspectArchiveSource } from './engine';
 export { allFindingSpecs } from './findings';
 export { bufferSink, bufferSource, fileSink, fileSource, writableSink } from './io';

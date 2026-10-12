@@ -66,6 +66,13 @@ export interface PackOptions {
   memoryThreshold?: number;
   /** Stops the work when aborted: the sink is aborted and the call throws the signal's reason. */
   signal?: AbortSignal;
+  /**
+   * ZIP only: write each file as its data arrives, deflated on the way, with its CRC and sizes in a data descriptor
+   * after the data. Nothing goes to a temporary file. An entry with `store: true` is held in memory, since a stored
+   * entry keeps its sizes in its header. `ratioLimit` does not apply, since an entry is written before its ratio is
+   * known.
+   */
+  streaming?: boolean;
 }
 
 /** Thrown for an entry this package will not write, before anything of the entry is written. */
@@ -75,6 +82,8 @@ const enc = new TextEncoder();
 /** The reading default of `limits.compressionRatio`. */
 const DEFAULT_RATIO = 1000;
 const toBytes = (c: Uint8Array | string) => (typeof c === 'string' ? enc.encode(c) : c);
+/** Bytes that small chunks of an entry are gathered into before they go on. */
+const BATCH = 64 * 1024;
 
 /** Throws the signal's reason once the work is to stop. */
 type Check = () => void;
@@ -95,10 +104,26 @@ async function* chunksOf(data: PackData | undefined): AsyncGenerator<Uint8Array>
     if (b.length) yield b;
     return;
   }
+  // Small chunks, such as one row of a sheet each, go to the compressor in pieces of BATCH bytes. zlib does the same
+  // work either way, and each write costs as much as a large one.
+  let pending: Uint8Array[] = [];
+  let held = 0;
   for await (const c of data) {
     const b = toBytes(c);
-    if (b.length) yield b;
+    if (!b.length) continue;
+    if (held === 0 && b.length >= BATCH) {
+      yield b;
+      continue;
+    }
+    pending.push(b);
+    held += b.length;
+    if (held >= BATCH) {
+      yield Buffer.concat(pending, held);
+      pending = [];
+      held = 0;
+    }
   }
+  if (held) yield Buffer.concat(pending, held);
 }
 
 /** One entry with its kind settled and its name checked. */
@@ -240,6 +265,10 @@ async function writeZipEntries(entries: AsyncIterable<Settled>, sink: ByteSink, 
       await out.entry(info, () => chunksOf(undefined), s.name);
       continue;
     }
+    if (options.streaming) {
+      await streamZipEntry(out, s, info, level, check);
+      continue;
+    }
     // The content is read once, into memory or a temporary file, and deflated from there, so it can be stored instead
     // when deflate gains nothing or passes the ratio limit.
     const { spill: raw, crc } = await spillOf(s, temp, threshold, check);
@@ -263,6 +292,54 @@ async function writeZipEntries(entries: AsyncIterable<Settled>, sink: ByteSink, 
     }
   }
   await out.end(enc.encode(options.comment ?? ''));
+}
+
+/**
+ * Writes one entry of a streaming ZIP archive. A file is deflated as its data arrives and gets a data descriptor; at
+ * level 0, deflate writes stored blocks. An empty file is stored with its sizes. A link's target and a file the caller
+ * stores are held in memory, so their headers carry their sizes, since a stored entry with a data descriptor is how a
+ * second, hidden entry gets past a reader of the central directory.
+ */
+async function streamZipEntry(out: ZipOutput, s: Settled, info: Written, level: number, check: Check): Promise<void> {
+  const it = checked(await contentOf(s), check)[Symbol.asyncIterator]();
+  let first: IteratorResult<Uint8Array>;
+  try {
+    first = await it.next();
+  } catch (e) {
+    await it.return?.(undefined);
+    throw e;
+  }
+  if (s.kind === 'symlink' || s.entry.store === true || first.done) {
+    const parts: Uint8Array[] = [];
+    let crc = 0;
+    try {
+      for (let r: IteratorResult<Uint8Array> = first; !r.done; r = await it.next()) {
+        crc = crc32(r.value, crc);
+        parts.push(r.value);
+      }
+    } finally {
+      await it.return?.(undefined);
+    }
+    const data = Buffer.concat(parts);
+    Object.assign(info, { method: 0, versionNeeded: 10, crc, size: data.length, compressedSize: data.length });
+    await out.entry(info, () => chunksOf(data), s.name);
+    return;
+  }
+  let crc = 0;
+  let size = 0;
+  const raw = async function* (): AsyncGenerator<Uint8Array> {
+    try {
+      for (let r: IteratorResult<Uint8Array> = first; !r.done; r = await it.next()) {
+        crc = crc32(r.value, crc);
+        size += r.value.length;
+        yield r.value;
+      }
+    } finally {
+      await it.return?.(undefined);
+    }
+  };
+  Object.assign(info, { method: 8, versionNeeded: 20 });
+  await out.streamEntry(info, deflateRaw(raw(), level), () => ({ crc, size }));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -480,6 +557,8 @@ async function deliver(produce: () => Promise<void>, sink: ByteSink): Promise<vo
  */
 export async function createArchive(format: PackFormat, entries: Iterable<PackEntry> | AsyncIterable<PackEntry>, sink: ByteSink, options: PackOptions = {}): Promise<void> {
   if (!ARCHIVE_FORMATS.has(format)) throw new PackError(`Unknown archive format ${String(format)}`);
+  // tar needs each entry's size before its data, and 7z writes its header from every entry after the data.
+  if (options.streaming && format !== 'zip') throw new PackError(`streaming writes ZIP archives only, not ${format}`);
   const now = new Date();
   const temp = new TempDir(options.tempDir);
   const check = () => options.signal?.throwIfAborted();

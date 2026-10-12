@@ -109,35 +109,44 @@ export class ZipOutput {
       await this.put(c);
     }
     if (written !== info.compressedSize) throw new Error(`Entry ${label} has ${written} compressed bytes, not ${info.compressedSize}`);
-    const far = localOffset >= MAX32;
-    const z64 = new Builder();
-    if (info.size >= MAX32) z64.u64(info.size);
-    if (info.compressedSize >= MAX32) z64.u64(info.compressedSize);
-    if (far) z64.u64(localOffset);
-    const z64Bytes = z64.build();
-    const needed = z64Bytes.length ? Math.max(45, info.versionNeeded) : info.versionNeeded;
-    const c = new Builder()
-      .u32(0x02014b50)
-      .u16(info.versionMadeBy)
-      .u16(needed)
-      .u16(info.flags)
+    this.central.push(centralRecord(info, localOffset));
+  }
+
+  /**
+   * Writes one entry whose sizes are known only once its data has gone out: a local header with the data descriptor
+   * flag and no CRC or sizes, then `chunks`, the compressed data, then a data descriptor with the CRC and the sizes.
+   * `totals` gives the CRC and size of the uncompressed data once `chunks` has ended. An entry of 4 GiB or more gets
+   * eight-byte sizes in its descriptor and a ZIP64 field in the central directory, as archiver writes one.
+   */
+  async streamEntry(info: Written, chunks: AsyncIterable<Uint8Array>, totals: () => { crc: number; size: number }): Promise<void> {
+    const flags = info.flags | 0x0008;
+    const localOffset = this.offset;
+    const local = new Builder()
+      .u32(0x04034b50)
+      .u16(info.versionNeeded)
+      .u16(flags)
       .u16(info.method)
       .u16(info.time)
       .u16(info.date)
-      .u32(info.crc)
-      .u32(info.compressedSize >= MAX32 ? MAX32 : info.compressedSize)
-      .u32(info.size >= MAX32 ? MAX32 : info.size)
+      .u32(0)
+      .u32(0)
+      .u32(0)
       .u16(info.name.length)
-      .u16(info.extras.length + (z64Bytes.length ? z64Bytes.length + 4 : 0))
-      .u16(info.comment.length)
-      .u16(0)
-      .u16(info.internalAttr)
-      .u32(info.externalAttr)
-      .u32(far ? MAX32 : localOffset)
-      .bytes(info.name);
-    if (z64Bytes.length) c.u16(0x0001).u16(z64Bytes.length).bytes(z64Bytes);
-    c.bytes(info.extras).bytes(info.comment);
-    this.central.push(c.build());
+      .u16(info.extras.length)
+      .bytes(info.name)
+      .bytes(info.extras);
+    await this.put(local.build());
+    let compressedSize = 0;
+    for await (const c of chunks) {
+      compressedSize += c.length;
+      await this.put(c);
+    }
+    const { crc, size } = totals();
+    const descriptor = new Builder().u32(0x08074b50).u32(crc);
+    if (size >= MAX32 || compressedSize >= MAX32) descriptor.u64(compressedSize).u64(size);
+    else descriptor.u32(compressedSize).u32(size);
+    await this.put(descriptor.build());
+    this.central.push(centralRecord({ ...info, flags, crc, size, compressedSize }, localOffset));
   }
 
   /** Writes the central directory and the end records, with the archive's comment. */
@@ -166,6 +175,39 @@ export class ZipOutput {
         .build(),
     );
   }
+}
+
+/** The central directory record of an entry whose local header starts at `localOffset`. */
+function centralRecord(info: Written, localOffset: number): Uint8Array {
+  const far = localOffset >= MAX32;
+  const z64 = new Builder();
+  if (info.size >= MAX32) z64.u64(info.size);
+  if (info.compressedSize >= MAX32) z64.u64(info.compressedSize);
+  if (far) z64.u64(localOffset);
+  const z64Bytes = z64.build();
+  const needed = z64Bytes.length ? Math.max(45, info.versionNeeded) : info.versionNeeded;
+  const c = new Builder()
+    .u32(0x02014b50)
+    .u16(info.versionMadeBy)
+    .u16(needed)
+    .u16(info.flags)
+    .u16(info.method)
+    .u16(info.time)
+    .u16(info.date)
+    .u32(info.crc)
+    .u32(info.compressedSize >= MAX32 ? MAX32 : info.compressedSize)
+    .u32(info.size >= MAX32 ? MAX32 : info.size)
+    .u16(info.name.length)
+    .u16(info.extras.length + (z64Bytes.length ? z64Bytes.length + 4 : 0))
+    .u16(info.comment.length)
+    .u16(0)
+    .u16(info.internalAttr)
+    .u32(info.externalAttr)
+    .u32(far ? MAX32 : localOffset)
+    .bytes(info.name);
+  if (z64Bytes.length) c.u16(0x0001).u16(z64Bytes.length).bytes(z64Bytes);
+  c.bytes(info.extras).bytes(info.comment);
+  return c.build();
 }
 
 /** Writes `zip` again with the entries `plan` keeps. */

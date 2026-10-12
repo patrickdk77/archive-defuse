@@ -247,6 +247,35 @@ A finding from another package scores at its `weight`. An archive's findings car
 
 archive-defuse follows the contract of pdf-defuse. `ContainedFilePlugin`, `PluginContext`, `ContainedFile`, `ContainedFileResult` and `DefuseFinding` have pdf-defuse's shapes, and `context.depth` is the depth of the file itself, with the upload at 0. `archivePlugin(options)` is the plugin the router builds, and the router puts itself in `filePlugins`, so an entry of any format comes back to it. The same `password` list goes to every package.
 
+### Detection
+
+`detectArchive(bytes, options)` and `detectArchiveSource(source, options)` tell a router whether archive-defuse reads a file, and in which format. They return `{ mimeType, extension, offset }`, or undefined. The answer comes from the same format selection the inspection runs, so routing and reading cannot disagree. The content decides, apart from Brotli below. `options.name` and `options.declaredType` change nothing else, so a .docx comes back as a ZIP, and the router asks office-defuse before it takes that answer.
+
+| Format | `mimeType` | `extension` |
+|---|---|---|
+| ZIP and ZIPX | application/zip | zip |
+| tar | application/x-tar | tar |
+| gzip | application/gzip | gz |
+| bzip2 | application/x-bzip2 | bz2 |
+| zstd | application/zstd | zst |
+| Brotli | application/x-brotli | br |
+| cabinet | application/vnd.ms-cab-compressed | cab |
+| 7z | application/x-7z-compressed | 7z |
+| xz | application/x-xz | xz |
+| .lzma | application/x-lzma | lzma |
+
+ZIPX has no format of its own here. The ZIP reader reads it, so it comes back as a ZIP.
+
+`offset` is where the archive's data starts. It is 0 when a signature starts the file. For a ZIP found from its end record, it is where the ZIP reader finds the first entry, the same number STRUCTURE/LEADING_BYTES reports, or 0 when the reader cannot open the archive. For a 7z archive after a self-extracting program, it is the signature header's offset.
+
+Three claims rest on no signature, and those answers carry `heuristic`, which says what the claim rests on. An .lzma file passes liblzma's header test. A Brotli file decodes as one stream that ends with the file, or past 32 MiB without an error. A file of zeros, at least 1024 bytes long and a multiple of 512, is an empty tar. Other runs of zeros, from 14 bytes, pass the .lzma test instead.
+
+A file the selection picks and the reader then refuses, such as a truncated ZIP, still counts, and the inspection rejects it with its own finding. RAR is detected only to be rejected, so detection does not claim it.
+
+Brotli has no signature, and a file of one or two bytes can decode as a Brotli stream. A file holding just `5` is an empty one. So detection claims Brotli only when `options.name` ends in `.br` or `options.declaredType` is application/x-brotli, and the whole file decodes. `archivePlugin` accepts exactly what detection claims, with the file's own name and declared type.
+
+`detectArchiveSource` leaves the source open. It passes read errors on, and throws with the `DEFUSE_LIMIT` code once `options.deadline` passes. Detection uses no temporary files and ignores `tempDir` and `memoryThreshold`, which the family's options carry for other packages.
+
 ## Making and reading archives
 
 archive-defuse also makes archives and reads them, with no defusing involved, for code that would otherwise use archiver, adm-zip or tar-stream.
@@ -277,6 +306,10 @@ const result = JSON.parse(await zip.text('result.json'));
 - `linkTarget` for a symbolic link, `mode` for the permission bits, `mtime` for the time, and `store: true` to keep a ZIP entry uncompressed, which the `mimetype` entry of an ODF document needs.
 
 ZIP, tar and 7z need an entry's size before its data, so an entry given as a stream is read first, into memory up to `memoryThreshold` (8 MiB) and into a temporary file past it. ZIP entries are deflated at `level` 6. ZIP and 7z store an entry that compression gains nothing on, or that would compress past `ratioLimit`, 1,000 to 1 by default, so their archives read back under the default limits. A compressed tar and the output of `compress` have no stored form. Content that compresses past 1,000 to 1, such as a long run of zeros, stops `openArchive`, `decompress` and the inspection with LIMIT/RATIO. Raise `limits.compressionRatio` to read it.
+
+`streaming: true` writes a ZIP archive the way archiver does, with no temporary file. Each file is deflated as its data arrives and goes straight to the sink, and a data descriptor after the data carries its CRC and sizes. Only zlib's buffers are held. A file with `store: true` and a link's target are held in memory, because a stored entry keeps its sizes in its header, and an empty file is stored. Two things of the default mode are lost. A file deflate cannot shrink is deflated anyway, and `ratioLimit` does not apply, since the entry is out before its ratio is known. An entry of 4 GiB or more gets eight-byte sizes in its descriptor. tar and 7z need each entry's size before its data, so `streaming` writes ZIP only. A 26 MB sheet given one row per chunk takes 0.75 seconds this way, and 1.2 in the default mode.
+
+Small chunks of an entry are gathered into 64 KiB pieces before they are compressed, so data given one row at a time compresses as fast as data given in large pieces.
 
 `createArchive` throws a PackError, before it writes the entry, for a name the inspection would change. That covers an empty name, a NUL, an absolute path, a drive letter, a `..` part with or without dots and spaces after it, an empty or `.` part, a backslash, a control character or one that reorders text, and a part Windows cannot create, such as `con.txt`, `report:v2.txt` or a part that ends in a dot or a space. It also refuses a name that leaves its folder once NFKC normalization or Windows best fit changes it. NFKC turns two fullwidth full stops, U+FF0E, into `..`. Best fit turns a yen sign, U+00A5, into a backslash when a program on Japanese Windows converts the name to code page 932. A name with a yen sign is still written unless that conversion takes it out of its folder. Duplicate names are written as given.
 

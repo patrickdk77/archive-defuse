@@ -1,5 +1,5 @@
+import { detectArchiveSource } from './detect';
 import { disarmAtDepth, RUN_OPTIONS, type RunContext } from './engine';
-import { detect } from './formats';
 import { weightOf } from './score';
 import { extensionOf, typeFromName } from './sniff';
 import type { ArchiveOptions, ContainedFilePlugin } from './types';
@@ -34,7 +34,8 @@ export function archivePlugin(options?: ArchiveOptions): ContainedFilePlugin {
   return {
     kind: 'file',
     name: 'archive',
-    accepts: async f => (await detect(f.source)) !== undefined,
+    // It takes what detectArchive claims, which is what the inspection reads, Brotli included: the content decides.
+    accepts: async f => (await detectArchiveSource(f.source, { name: f.name, declaredType: f.declaredType })) !== undefined,
     async process(file, sink, context) {
       const run = options ?? (context as RunContext)[RUN_OPTIONS] ?? {};
       const r = await disarmAtDepth(file.source, sink, run, context.depth, context.deadline);

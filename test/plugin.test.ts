@@ -82,11 +82,14 @@ describe('file plugins', () => {
 });
 
 describe('archivePlugin', () => {
-  it('accepts archives by content, whatever the name says, and declines other content', async () => {
+  it('accepts archives by content, whatever the name says, Brotli by its name, and declines other content', async () => {
     const plugin = archivePlugin();
-    for (const name of ['zip-clean.zip', 'tar-clean.tar', 'gzip-clean.txt.gz', 'bzip2-clean.bz2', 'brotli-clean.br', 'cab-clean.cab', 'zip-prepended.zip']) {
+    for (const name of ['zip-clean.zip', 'tar-clean.tar', 'gzip-clean.txt.gz', 'bzip2-clean.bz2', 'cab-clean.cab', 'zip-prepended.zip']) {
       expect(await plugin.accepts(fileOf(fixture(name), 'misnamed.txt')), name).to.equal(true);
     }
+    // Brotli has no signature, so the name or the declared type has to say it.
+    expect(await plugin.accepts(fileOf(fixture('brotli-clean.br'), 'misnamed.txt'))).to.equal(false);
+    expect(await plugin.accepts(fileOf(fixture('brotli-clean.br'), 'data.br'))).to.equal(true);
     expect(await plugin.accepts(fileOf(Buffer.from('plain text that is no archive'), 'x.zip'))).to.equal(false);
     expect(await plugin.accepts(fileOf(Buffer.from('%PDF-1.7\n'), 'x.tar'))).to.equal(false);
   });

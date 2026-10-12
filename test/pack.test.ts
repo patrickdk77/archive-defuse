@@ -197,9 +197,101 @@ describe('createArchive and openArchive', () => {
   });
 });
 
+describe('streaming ZIP', () => {
+  /** Local headers by name, read through the central directory: flags, method and the compressed size they give. */
+  function localHeaders(zip: Uint8Array): Map<string, { flags: number; method: number; compressedSize: number }> {
+    const b = Buffer.from(zip);
+    const end = b.length - 22;
+    const out = new Map<string, { flags: number; method: number; compressedSize: number }>();
+    for (let i = 0, q = b.readUInt32LE(end + 16); i < b.readUInt16LE(end + 10); i++) {
+      const n = b.readUInt16LE(q + 28);
+      const at = b.readUInt32LE(q + 42);
+      out.set(b.subarray(q + 46, q + 46 + n).toString(), { flags: b.readUInt16LE(at + 6), method: b.readUInt16LE(at + 8), compressedSize: b.readUInt32LE(at + 18) });
+      q += 46 + n + b.readUInt16LE(q + 30) + b.readUInt16LE(q + 32);
+    }
+    return out;
+  }
+  async function* rows(n: number): AsyncGenerator<string> {
+    yield '<?xml version="1.0" encoding="UTF-8"?>\n<sheetData>\n';
+    for (let i = 0; i < n; i++) yield `<row r="${i}"><c><v>${(i * 31) % 997}</v></c></row>\n`;
+    yield '</sheetData>\n';
+  }
+  const streamed = (): PackEntry[] => [
+    { name: 'mimetype', data: 'application/vnd.oasis.opendocument.spreadsheet', store: true },
+    { name: 'content.xml', data: rows(50_000) },
+    { name: 'empty.txt', data: Readable.from([]) },
+    { name: 'pictures/' },
+    { name: 'pictures/random.bin', data: () => Readable.from([random]) },
+    { name: 'link', linkTarget: 'content.xml' },
+  ];
+
+  it('writes each file as it arrives, with no temporary file, and the archive reads back everywhere', async () => {
+    // A temporary file would fail here, as it does for the default mode.
+    const options = { streaming: true, tempDir: '/nonexistent-folder/for-temp', memoryThreshold: 0 };
+    const zip = await createArchiveBytes('zip', streamed(), options);
+    expect(((await failure(createArchiveBytes('zip', streamed(), { tempDir: options.tempDir, memoryThreshold: 0 }))) as { code?: string }).code).to.equal('ENOENT');
+    const reader = await openArchive(zip);
+    let expected = '';
+    for await (const r of rows(50_000)) expected += r;
+    expect(await reader.text('content.xml')).to.equal(expected);
+    expect((await reader.bytes('pictures/random.bin')).equals(random)).to.equal(true);
+    expect((await reader.bytes('empty.txt')).length).to.equal(0);
+    expect(reader.find('link')?.linkTarget).to.equal('content.xml');
+    await reader.close();
+    expect(pythonList('zip', zip).map(([name]) => name)).to.deep.equal(['mimetype', 'content.xml', 'empty.txt', 'pictures/', 'pictures/random.bin', 'link']);
+    const r = await inspectArchive(zip, { filePlugins: [keepAll] });
+    expect([r.status, kinds(r).filter(k => k !== 'ENTRY/PLUGIN_PASSED')]).to.deep.equal(['clean', ['LINK/SYMLINK']]);
+  });
+
+  it('gives a streamed file a data descriptor, and keeps sizes in the header of a stored file, an empty one, a folder and a link', async () => {
+    const headers = localHeaders(await createArchiveBytes('zip', streamed(), { streaming: true }));
+    expect([...headers].map(([name, h]) => [name, h.flags & 8, h.method, h.compressedSize > 0])).to.deep.equal([
+      ['mimetype', 0, 0, true],
+      ['content.xml', 8, 8, false],
+      ['empty.txt', 0, 0, false],
+      ['pictures/', 0, 0, false],
+      ['pictures/random.bin', 8, 8, false],
+      ['link', 0, 0, true],
+    ]);
+    // At level 0, deflate's stored blocks still stream.
+    const level0 = localHeaders(await createArchiveBytes('zip', [{ name: 'a.txt', data: rows(10) }], { streaming: true, level: 0 }));
+    expect(level0.get('a.txt')).to.include({ flags: 8, method: 8 });
+  });
+
+  it('writes ZIP only, since tar and 7z need sizes first', async () => {
+    for (const format of ['tar', 'tar.gz', '7z'] as const) {
+      const e = await failure(createArchiveBytes(format, [{ name: 'a.txt', data: 'x' }], { streaming: true }));
+      expect(e, format).to.be.instanceOf(PackError);
+    }
+  });
+
+  it('stops when the output stream is destroyed, and fails the output when an entry stream fails', async () => {
+    let stream: Readable | undefined;
+    const { state, source } = endless(20, () => stream as Readable);
+    stream = createArchiveStream('zip', [{ name: 'endless.bin', data: source() }], { streaming: true });
+    stream.resume();
+    await state.closed;
+    expect(state.produced).to.be.within(20, 24);
+    const broken = async function* () {
+      yield Buffer.from('first');
+      throw new Error('the source broke');
+    };
+    let aborted: unknown;
+    const sink = {
+      ...bufferSink(),
+      abort: async (err: unknown) => {
+        aborted = err;
+      },
+    };
+    await failure(createArchive('zip', [{ name: 'a.txt', data: broken() }], sink, { streaming: true }));
+    expect(String(aborted)).to.match(/the source broke/);
+  });
+});
+
 /**
  * A source that never ends, which destroys `out` after `after` chunks. `closed` settles when the source is closed,
- * and `produced` counts the chunks it made.
+ * and `produced` counts the chunks it made. Small chunks go on in batches of 64 KiB, four of these, so the work stops
+ * within one batch of the destroy.
  */
 function endless(after: number, out: () => { destroy(): void }) {
   let done: () => void = () => undefined;
@@ -239,7 +331,7 @@ describe('cancelling', () => {
       stream = createArchiveStream(format, list());
       stream.resume();
       await state.closed;
-      expect(state.produced).to.be.within(20, 22);
+      expect(state.produced).to.be.within(20, 24);
       expect(pulled).to.equal(1);
     });
   }
@@ -251,7 +343,7 @@ describe('cancelling', () => {
       stream = compressStream(format, source());
       stream.resume();
       await state.closed;
-      expect(state.produced).to.be.within(20, 22);
+      expect(state.produced).to.be.within(20, 24);
     });
   }
 
@@ -286,7 +378,7 @@ describe('cancelling', () => {
     await state.closed;
     expect(String(e2)).to.match(/stopped during/);
     expect(String(aborted)).to.match(/stopped during/);
-    expect(state.produced).to.be.within(20, 22);
+    expect(state.produced).to.be.within(20, 24);
 
     const e3 = await failure(compress('lzma', 'x', { signal: before.signal }));
     expect(String(e3)).to.match(/stopped before/);

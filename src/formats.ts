@@ -22,31 +22,51 @@ function otherFormat(b: Uint8Array): string | undefined {
   return undefined;
 }
 
+/** The format `select` picks, where its data starts, and what a pick without a signature at the start rests on. */
+export interface Selection {
+  format: ArchiveFormat;
+  /** Where the format's data starts. Absent for a ZIP archive found from its end record, whose start the ZIP reader finds. */
+  offset?: number;
+  /** Set when no signature picked the format, and says what did. */
+  heuristic?: string;
+}
+
 /**
  * The format the content has, from its first bytes. A file that starts with no signature of ours can still be a ZIP
  * archive with data in front, which its end record shows, or Brotli, which has no signature and is tried last.
  */
-export async function detect(source: ByteSource): Promise<ArchiveFormat | undefined> {
+export async function select(source: ByteSource): Promise<Selection | undefined> {
   const size = await source.size();
   const head = await source.read(0, Math.min(1024, size));
-  if (isZipStart(head)) return 'zip';
-  if (startsWith(head, XZ_MAGIC)) return 'xz';
-  if (startsWith(head, SEVENZIP_MAGIC)) return '7z';
-  if (isGzip(head)) return 'gzip';
-  if (isBzip2(head)) return 'bzip2';
-  if (isZstdMagic(head)) return 'zstd';
-  if (isCab(head)) return 'cab';
-  if (isTar(head)) return 'tar';
+  const atStart = (format: ArchiveFormat): Selection => ({ format, offset: 0 });
+  if (isZipStart(head)) return atStart('zip');
+  if (startsWith(head, XZ_MAGIC)) return atStart('xz');
+  if (startsWith(head, SEVENZIP_MAGIC)) return atStart('7z');
+  if (isGzip(head)) return atStart('gzip');
+  if (isBzip2(head)) return atStart('bzip2');
+  if (isZstdMagic(head)) return atStart('zstd');
+  if (isCab(head)) return atStart('cab');
+  if (isTar(head)) return atStart('tar');
   // An archive with no entries is its two end blocks, and a tar writer pads it with more zeros.
-  if (size >= 1024 && size % 512 === 0 && head.every(b => b === 0)) return 'tar';
+  if (size >= 1024 && size % 512 === 0 && head.every(b => b === 0)) {
+    return { format: 'tar', offset: 0, heuristic: 'no tar header: the file is zeros, at least 1024 bytes and a multiple of 512, as an empty tar is' };
+  }
   if (otherFormat(head) !== undefined) return undefined;
   // An .lzma header has no magic, and 14 zero bytes pass liblzma's own test, so a ZIP found from its end comes first.
-  if (await hasZipEnd(source)) return 'zip';
-  if (looksLikeLzma(head)) return 'lzma';
+  if (await hasZipEnd(source)) return { format: 'zip' };
+  if (looksLikeLzma(head)) return { format: 'lzma', offset: 0, heuristic: "no signature: the 13-byte header and the first data byte pass liblzma's test for an .lzma file" };
   // A 7z archive after other data, such as the program of a self-extracting archive.
-  if (detectLzmaFormat(await source.read(0, Math.min(size, SEVENZIP_SEARCH)))?.format === '7z') return '7z';
-  if (await looksLikeBrotli(source)) return 'brotli';
+  const sfx = detectLzmaFormat(await source.read(0, Math.min(size, SEVENZIP_SEARCH)));
+  if (sfx?.format === '7z') return { format: '7z', offset: sfx.offset };
+  if (await looksLikeBrotli(source)) {
+    return { format: 'brotli', offset: 0, heuristic: 'no signature: the file decodes as one Brotli stream that ends where the file does, or past 32 MiB without an error' };
+  }
   return undefined;
+}
+
+/** The format `select` picks. */
+export async function detect(source: ByteSource): Promise<ArchiveFormat | undefined> {
+  return (await select(source))?.format;
 }
 
 /** Opens the archive in the format `detect` found. A file in no format of ours throws the UNPARSEABLE refusal. */
