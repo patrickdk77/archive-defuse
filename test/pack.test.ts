@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import { expect } from 'chai';
 import {
   ArchiveReadError,
+  type ArchiveWriter,
   bufferSink,
   type CompressFormat,
   compress,
@@ -10,13 +11,18 @@ import {
   createArchive,
   createArchiveBytes,
   createArchiveStream,
+  createArchiveWriter,
   decompress,
   inspectArchive,
   openArchive,
   type PackEntry,
   PackError,
   type PackFormat,
+  type PackOptions,
 } from '../src';
+import { deflateRaw } from '../src/codecs';
+import { crc32 } from '../src/crc32';
+import { ZipOutput } from '../src/zip-writer';
 import { fixture as lzmaFixture } from './helpers/lzma';
 import { failure, fixture, hasZstd, keepAll, kinds, pythonList } from './helpers/util';
 
@@ -436,5 +442,251 @@ describe('openArchive', () => {
   it('gives names as the archive stores them, with no rule applied', async () => {
     const zip = await openArchive(fixture('zip-traversal.zip'));
     expect(zip.entries.map(e => e.name)).to.include('../outside.txt');
+  });
+});
+
+/** All of a stream's bytes. */
+async function collect(stream: Readable): Promise<Buffer> {
+  const parts: Buffer[] = [];
+  for await (const c of stream) parts.push(c as Buffer);
+  return Buffer.concat(parts);
+}
+
+const tick = () => new Promise(resolve => setImmediate(resolve));
+
+/** Waits until `add` throws, as it does once the archive has failed, for up to two seconds. */
+async function addFails(w: ArchiveWriter): Promise<unknown> {
+  for (let i = 0; i < 200; i++) {
+    try {
+      w.add({ name: `late-${i}.txt`, data: 'late' });
+    } catch (e) {
+      return e;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  return undefined;
+}
+
+describe('archive writer', () => {
+  const mtime = new Date('2024-05-06T07:08:09Z');
+
+  it('writes the archive createArchive writes, with entries added while it runs', async () => {
+    for (const format of ARCHIVES) {
+      if (needsZstd(format) && !hasZstd) continue;
+      for (const streaming of format === 'zip' ? [false, true] : [false]) {
+        const options: PackOptions = { mtime, streaming };
+        const expected = Buffer.from(await createArchiveBytes(format, entries(), options));
+        const w = createArchiveWriter(format, options);
+        const read = collect(w.stream);
+        for (const e of entries()) {
+          w.add(e);
+          await tick();
+        }
+        await w.finish();
+        expect((await read).equals(expected), `${format}, streaming ${streaming}`).to.equal(true);
+      }
+    }
+  });
+
+  it('takes entries from synchronous code before the stream is read', async () => {
+    const options: PackOptions = { mtime, streaming: true };
+    const w = createArchiveWriter('zip', options);
+    for (const e of entries()) w.add(e);
+    const finished = w.finish();
+    const zip = await collect(w.stream);
+    await finished;
+    expect(zip.equals(Buffer.from(await createArchiveBytes('zip', entries(), options)))).to.equal(true);
+  });
+
+  it('throws on add after finish, and writes what came before', async () => {
+    const w = createArchiveWriter('tar');
+    const read = collect(w.stream);
+    w.add({ name: 'a.txt', data: 'a' });
+    const finished = w.finish();
+    expect(() => w.add({ name: 'b.txt', data: 'b' })).to.throw(PackError, /after the archive was finished/);
+    await finished;
+    expect(pythonList('tar', await read).map(([name]) => name)).to.deep.equal(['a.txt']);
+  });
+
+  it('fails on an entry createArchive refuses: the stream errors, add throws with the cause, and finish rejects', async () => {
+    const w = createArchiveWriter('zip', { streaming: true });
+    const read = failure(collect(w.stream));
+    w.add({ name: 'a.txt', data: 'a' });
+    w.add({ name: '../escape.txt', data: 'b' });
+    const error = await read;
+    expect(error).to.be.instanceOf(PackError);
+    let added: unknown;
+    try {
+      w.add({ name: 'c.txt', data: 'c' });
+    } catch (e) {
+      added = e;
+    }
+    expect(added).to.be.instanceOf(PackError);
+    expect((added as Error).cause).to.equal(error);
+    expect(await failure(w.finish())).to.equal(error);
+  });
+
+  it('stops on abort: the stream is destroyed with the reason, and finish rejects with it', async () => {
+    const w = createArchiveWriter('zip', { streaming: true });
+    const read = failure(collect(w.stream));
+    w.add({ name: 'a.txt', data: 'a' });
+    await tick();
+    const reason = new Error('the caller gave up');
+    w.abort(reason);
+    expect(await read).to.equal(reason);
+    expect(await failure(w.finish())).to.equal(reason);
+    expect(() => w.add({ name: 'b.txt', data: 'b' })).to.throw(PackError, /after the archive was aborted/);
+  });
+
+  it('stops waiting for entries when the reader goes away or the signal aborts', async () => {
+    const left = createArchiveWriter('zip', { streaming: true });
+    left.add({ name: 'a.txt', data: 'a' });
+    await tick();
+    left.stream.destroy();
+    expect(await addFails(left)).to.be.instanceOf(PackError);
+    expect(String(await failure(left.finish()))).to.match(/closed before all data was written/);
+
+    const controller = new AbortController();
+    const signalled = createArchiveWriter('zip', { streaming: true, signal: controller.signal });
+    const read = failure(collect(signalled.stream));
+    signalled.add({ name: 'a.txt', data: 'a' });
+    await tick();
+    controller.abort(new Error('the signal fired'));
+    expect(await addFails(signalled)).to.be.instanceOf(PackError);
+    expect(String(await failure(signalled.finish()))).to.match(/the signal fired/);
+    await read;
+  });
+
+  it('throws at once for an unknown format, and for streaming with a format other than ZIP', () => {
+    expect(() => createArchiveWriter('rar' as PackFormat)).to.throw(PackError);
+    expect(() => createArchiveWriter('tar', { streaming: true })).to.throw(PackError);
+  });
+});
+
+describe('entry size', () => {
+  // A temporary file fails here, so these show which entries are written without one.
+  const noTemp: PackOptions = { tempDir: '/nonexistent-folder/for-temp', memoryThreshold: 0 };
+  const sizedFiles = (): PackEntry[] => [
+    { name: 'random.bin', data: random },
+    { name: 'text.txt', data: text },
+    { name: 'stream.bin', data: Readable.from([random.subarray(0, 1000), random.subarray(1000)]), size: random.length },
+    { name: 'lazy.txt', data: () => Readable.from([text]), size: Buffer.byteLength(text) },
+    { name: 'empty.txt', data: Readable.from([]), size: 0 },
+  ];
+
+  it('lets tar write a file of known size as it arrives, with no temporary file', async () => {
+    for (const format of ['tar', 'tar.gz', 'tar.bz2'] as const) {
+      let reader = await openArchive(await createArchiveBytes(format, sizedFiles(), noTemp));
+      // A compressed tar opens as the compressed file, whose one entry is the tar.
+      if (format !== 'tar') reader = await openArchive(await reader.bytes(reader.entries[0]));
+      expect((await reader.bytes('random.bin')).equals(random), format).to.equal(true);
+      expect((await reader.bytes('stream.bin')).equals(random), format).to.equal(true);
+      expect(await reader.text('text.txt'), format).to.equal(text);
+      expect(await reader.text('lazy.txt'), format).to.equal(text);
+      expect((await reader.bytes('empty.txt')).length, format).to.equal(0);
+      await reader.close();
+    }
+    expect(pythonList('tar', await createArchiveBytes('tar', sizedFiles(), noTemp)).map(([name]) => name)).to.deep.equal(['random.bin', 'text.txt', 'stream.bin', 'lazy.txt', 'empty.txt']);
+    // A stream without a size is read first, so it still needs the temporary file.
+    const e = await failure(createArchiveBytes('tar', [{ name: 'a.bin', data: Readable.from([random]) }], noTemp));
+    expect((e as { code?: string }).code).to.equal('ENOENT');
+  });
+
+  it('fails the archive when a stream comes to another size, in every format', async () => {
+    for (const format of ARCHIVES) {
+      if (needsZstd(format) && !hasZstd) continue;
+      for (const streaming of format === 'zip' ? [false, true] : [false]) {
+        const label = `${format}, streaming ${streaming}`;
+        const short = await failure(createArchiveBytes(format, [{ name: 'a.bin', data: Readable.from([Buffer.alloc(10)]), size: 11 }], { streaming }));
+        expect(String(short), label).to.match(/has 10 bytes, not the 11 its size gives/);
+        const long = await failure(createArchiveBytes(format, [{ name: 'a.bin', data: Readable.from([Buffer.alloc(5), Buffer.alloc(5)]), size: 9 }], { streaming }));
+        expect(String(long), label).to.match(/has more than the 9 bytes its size gives/);
+      }
+    }
+  });
+
+  it('refuses bytes of another size, a size on a folder or a link, and a size that is not a whole number', async () => {
+    const refused: Array<[PackEntry, RegExp]> = [
+      [{ name: 'a.txt', data: 'abc', size: 4 }, /holds 3 bytes, not the 4/],
+      [{ name: 'a.txt', data: () => 'abc', size: 2 }, /holds 3 bytes, not the 2/],
+      [{ name: 'a.txt', size: 1 }, /holds 0 bytes, not the 1/],
+      [{ name: 'd/', size: 0 }, /only a file takes a size/],
+      [{ name: 'l', linkTarget: 'a.txt', size: 5 }, /only a file takes a size/],
+      [{ name: 'a.bin', data: Readable.from([]), size: -1 }, /not a whole number of bytes/],
+      [{ name: 'a.bin', data: Readable.from([]), size: 1.5 }, /not a whole number of bytes/],
+    ];
+    for (const [entry, message] of refused) {
+      for (const format of ['zip', 'tar'] as const) {
+        const e = await failure(createArchiveBytes(format, [entry], {}));
+        expect(e, `${entry.name} ${format}`).to.be.instanceOf(PackError);
+        expect(String(e)).to.match(message);
+      }
+    }
+  });
+});
+
+describe('ZIP64 fields of a streamed entry', () => {
+  /** The first entry's local header, and the length of its data descriptor. */
+  function firstEntry(zip: Uint8Array) {
+    const b = Buffer.from(zip);
+    const n = b.readUInt16LE(26);
+    const x = b.readUInt16LE(28);
+    const end = b.length - 22;
+    const central = b.readUInt32LE(end + 16);
+    const compressedSize = b.readUInt32LE(central + 20);
+    return {
+      version: b.readUInt16LE(4),
+      flags: b.readUInt16LE(6),
+      sizes: [b.readUInt32LE(18), b.readUInt32LE(22)],
+      extra: b.subarray(30 + n, 30 + n + x),
+      descriptor: central - (30 + n + x + compressedSize),
+    };
+  }
+
+  it('gives none to a file of known size that does not need them, nor to a stream without a size', async () => {
+    const files: PackEntry[] = [
+      { name: 'a.txt', data: text },
+      { name: 'a.bin', data: Readable.from([random]), size: random.length },
+      { name: 'a.bin', data: Readable.from([random]) },
+    ];
+    for (const file of files) {
+      const h = firstEntry(await createArchiveBytes('zip', [file], { streaming: true }));
+      expect([h.version, h.flags & 8, h.sizes, h.extra.length, h.descriptor], file.name).to.deep.equal([20, 8, [0, 0], 0, 16]);
+    }
+  });
+
+  it('writes them as Python does for an entry that may pass 4 GiB, and the archive reads back', async () => {
+    const data = Buffer.from(text);
+    const sink = bufferSink();
+    const out = new ZipOutput(sink);
+    const info = {
+      name: Buffer.from('big.txt'),
+      flags: 0,
+      method: 8,
+      versionNeeded: 20,
+      versionMadeBy: (3 << 8) | 30,
+      externalAttr: (0o100644 << 16) >>> 0,
+      internalAttr: 0,
+      time: 0,
+      date: (44 << 9) | (1 << 5) | 1,
+      crc: 0,
+      compressedSize: 0,
+      size: 0,
+      extras: new Uint8Array(0),
+      comment: new Uint8Array(0),
+    };
+    const chunks = async function* () {
+      yield data;
+    };
+    await out.streamEntry(info, deflateRaw(chunks(), 6), () => ({ crc: crc32(data, 0), size: data.length }), true);
+    await out.end(new Uint8Array(0));
+    const zip = sink.result();
+    const h = firstEntry(zip);
+    expect([h.version, h.flags & 8, h.sizes, h.descriptor]).to.deep.equal([45, 8, [0xffffffff, 0xffffffff], 24]);
+    expect(h.extra.equals(Buffer.concat([Buffer.from([1, 0, 16, 0]), Buffer.alloc(16)]))).to.equal(true);
+    const reader = await openArchive(zip);
+    expect(await reader.text('big.txt')).to.equal(text);
+    await reader.close();
+    expect(pythonList('zip', zip).map(([name]) => name)).to.deep.equal(['big.txt']);
   });
 });

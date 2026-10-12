@@ -3,6 +3,7 @@ export { disarmArchive, disarmArchiveSource, inspectArchive, inspectArchiveSourc
 export { allFindingSpecs } from './findings';
 export { bufferSink, bufferSource, fileSink, fileSource, writableSink } from './io';
 export {
+  type ArchiveWriter,
   type CompressFormat,
   compress,
   compressStream,
@@ -10,6 +11,7 @@ export {
   createArchive,
   createArchiveBytes,
   createArchiveStream,
+  createArchiveWriter,
   type PackData,
   type PackEntry,
   PackError,

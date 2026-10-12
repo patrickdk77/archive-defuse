@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 - 2026-10-11
+
+- `createArchiveWriter` makes an archive from entries added one at a time, for code that finds them as it goes, as archiver's `append` and `finalize` do. `add` returns at once, `finish` resolves once the end of the archive is written, and `abort` stops it.
+- An entry takes `size`. tar writes a file of known size as its data arrives: bytes, text, or a stream with `size`. tar used to read every file into memory or a temporary file first, bytes included. A 9 GiB stream with its size now goes out with no temporary file.
+- Content that comes to another size than its `size` fails the archive. Bytes or text of another size throw a PackError before the archive writes anything of the entry.
+- Streaming ZIP gives a file of known size ZIP64 fields in its local header when deflating it could pass 4 GiB, as the ZIP specification asks of an entry whose data descriptor has eight-byte sizes. A stream without a size gets none, as before.
+- Archives with no entry near 4 GiB come out byte for byte as 0.1.1 wrote them.
+
 ## 0.1.1 - 2026-10-11
 
 - `detectArchive` and `detectArchiveSource` tell a router whether archive-defuse reads a file, in which format and at which offset. They answer from the format selection the inspection runs, and `archivePlugin` accepts exactly what they claim.

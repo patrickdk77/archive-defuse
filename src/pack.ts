@@ -26,6 +26,13 @@ export interface PackEntry {
    * a caller open a stream only when its turn comes.
    */
   data?: PackData | (() => PackData | Promise<PackData>);
+  /**
+   * A file's size in bytes, for content given as a stream whose length the caller knows, such as a file in a database
+   * that records it. tar writes such a file as its data arrives instead of reading it into memory or a temporary file
+   * first, and streaming ZIP gives it ZIP64 fields only when its size needs them. Content that comes to another size
+   * fails the archive.
+   */
+  size?: number;
   /** The target of a symbolic link. */
   linkTarget?: string;
   /** Permission bits. Defaults to 0644 for a file and 0755 for a folder. */
@@ -60,8 +67,9 @@ export interface PackOptions {
   /** Folder for temporary files. Defaults to `os.tmpdir()`. */
   tempDir?: string;
   /**
-   * Bytes of one entry held in memory before a temporary file takes over, default 8 MiB. ZIP, tar and 7z need an
-   * entry's size before its data, so an entry given as a stream is read into memory or a temporary file first.
+   * Bytes of one entry held in memory before a temporary file takes over, default 8 MiB. An entry given as a stream
+   * is read into memory or a temporary file before it is written when the format needs something of it first: its
+   * CRC and sizes for ZIP without `streaming` and for 7z, and its size for tar when the entry gives no `size`.
    */
   memoryThreshold?: number;
   /** Stops the work when aborted: the sink is aborted and the call throws the signal's reason. */
@@ -70,7 +78,10 @@ export interface PackOptions {
    * ZIP only: write each file as its data arrives, deflated on the way, with its CRC and sizes in a data descriptor
    * after the data. Nothing goes to a temporary file. An entry with `store: true` is held in memory, since a stored
    * entry keeps its sizes in its header. `ratioLimit` does not apply, since an entry is written before its ratio is
-   * known.
+   * known. A file whose size is known, from its `size` or because its content is bytes or text, gets ZIP64 fields in
+   * its local header only when deflating it could pass 4 GiB. A stream without a size gets none, since some readers
+   * refuse ZIP64 fields an entry does not need; should it reach 4 GiB, its data descriptor holds eight-byte sizes, as
+   * archiver writes one. tar writes a file of known size as it arrives without this option.
    */
   streaming?: boolean;
 }
@@ -183,6 +194,10 @@ function settle(entry: PackEntry, options: PackOptions, now: Date): Settled {
   if (raw.includes('\0')) throw new PackError(`Entry name ${JSON.stringify(raw)} holds a NUL`);
   const kind = entry.kind ?? (raw.endsWith('/') ? 'directory' : entry.linkTarget !== undefined ? 'symlink' : 'file');
   if (kind === 'symlink' && entry.linkTarget === undefined) throw new PackError(`Symbolic link ${JSON.stringify(raw)} needs a linkTarget`);
+  if (entry.size !== undefined) {
+    if (kind !== 'file') throw new PackError(`Entry ${JSON.stringify(raw)} is a ${kind}, and only a file takes a size`);
+    if (!Number.isSafeInteger(entry.size) || entry.size < 0) throw new PackError(`Entry ${JSON.stringify(raw)} has a size of ${String(entry.size)}, which is not a whole number of bytes`);
+  }
   const name = kind === 'directory' ? (raw.endsWith('/') ? raw : `${raw}/`) : raw.replace(/\/+$/, '');
   for (const detail of nameDetails(name, true)) {
     const why = REFUSED[detail];
@@ -198,20 +213,55 @@ function settle(entry: PackEntry, options: PackOptions, now: Date): Settled {
   return { name, kind, entry, mode: (entry.mode ?? (kind === 'directory' ? 0o755 : kind === 'symlink' ? 0o777 : 0o644)) & 0o7777, mtime: entry.mtime ?? options.mtime ?? now };
 }
 
-/** The content of a settled entry: a file's data, a link's target, or nothing for a folder. */
-async function contentOf(s: Settled): Promise<AsyncGenerator<Uint8Array>> {
-  if (s.kind === 'directory') return chunksOf(undefined);
-  if (s.kind === 'symlink') return chunksOf(s.entry.linkTarget);
-  const d = s.entry.data;
-  return chunksOf(typeof d === 'function' ? await d() : d);
+/** The content of an entry, with its size when that is known before the data. */
+interface EntryContent {
+  chunks: AsyncGenerator<Uint8Array>;
+  size?: number;
+}
+
+/** `chunks`, failing as soon as they pass `size` bytes, or when they end short of it. */
+async function* sized(chunks: AsyncIterable<Uint8Array>, size: number, name: string): AsyncGenerator<Uint8Array> {
+  let total = 0;
+  for await (const c of chunks) {
+    total += c.length;
+    if (total > size) throw new Error(`Entry ${JSON.stringify(name)} has more than the ${size} bytes its size gives`);
+    yield c;
+  }
+  if (total !== size) throw new Error(`Entry ${JSON.stringify(name)} has ${total} bytes, not the ${size} its size gives`);
+}
+
+/**
+ * The content of a settled entry: a file's data, a link's target, or nothing for a folder. A file's size is known when
+ * the entry gives one or its content is bytes or text. Content given as bytes or text of another size than the entry
+ * gives throws a PackError here, before the entry is written; a stream of another size fails as it is read.
+ */
+async function contentOf(s: Settled): Promise<EntryContent> {
+  if (s.kind === 'directory') return { chunks: chunksOf(undefined), size: 0 };
+  if (s.kind === 'symlink') {
+    const target = toBytes(s.entry.linkTarget ?? '');
+    return { chunks: chunksOf(target), size: target.length };
+  }
+  const given = s.entry.data;
+  const raw = typeof given === 'function' ? await given() : given;
+  const data = typeof raw === 'string' ? toBytes(raw) : raw;
+  const own = data === undefined ? 0 : data instanceof Uint8Array ? data.length : undefined;
+  const size = s.entry.size;
+  if (size === undefined) return { chunks: chunksOf(data), size: own };
+  if (own !== undefined && own !== size) throw new PackError(`Entry ${JSON.stringify(s.name)} holds ${own} bytes, not the ${size} its size gives`);
+  return { chunks: sized(chunksOf(data), size, s.name), size };
 }
 
 /** Reads an entry's content into memory or a temporary file, counting its CRC-32. */
 async function spillOf(s: Settled, temp: TempDir, threshold: number, check: Check): Promise<{ spill: SpillSink; crc: number }> {
+  return spillChunks((await contentOf(s)).chunks, temp, threshold, check);
+}
+
+/** Reads chunks into memory or a temporary file, counting their CRC-32. */
+async function spillChunks(chunks: AsyncIterable<Uint8Array>, temp: TempDir, threshold: number, check: Check): Promise<{ spill: SpillSink; crc: number }> {
   const spill = new SpillSink(temp, threshold);
   let crc = 0;
   try {
-    for await (const c of checked(await contentOf(s), check)) {
+    for await (const c of checked(chunks, check)) {
       crc = crc32(c, crc);
       await spill.write(c);
     }
@@ -301,7 +351,8 @@ async function writeZipEntries(entries: AsyncIterable<Settled>, sink: ByteSink, 
  * second, hidden entry gets past a reader of the central directory.
  */
 async function streamZipEntry(out: ZipOutput, s: Settled, info: Written, level: number, check: Check): Promise<void> {
-  const it = checked(await contentOf(s), check)[Symbol.asyncIterator]();
+  const content = await contentOf(s);
+  const it = checked(content.chunks, check)[Symbol.asyncIterator]();
   let first: IteratorResult<Uint8Array>;
   try {
     first = await it.next();
@@ -339,7 +390,9 @@ async function streamZipEntry(out: ZipOutput, s: Settled, info: Written, level: 
     }
   };
   Object.assign(info, { method: 8, versionNeeded: 20 });
-  await out.streamEntry(info, deflateRaw(raw(), level), () => ({ crc, size }));
+  // zlib's deflateBound for any settings: deflate never grows data by more than this.
+  const zip64 = content.size !== undefined && content.size + Math.ceil(content.size / 8) + Math.ceil(content.size / 64) + 5 >= 0xffffffff;
+  await out.streamEntry(info, deflateRaw(raw(), level), () => ({ crc, size }), zip64);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -352,9 +405,24 @@ async function* tarChunks(entries: AsyncIterable<Settled>, options: PackOptions,
   let written = 0;
   const pad = (n: number) => Buffer.alloc((BLOCK - (n % BLOCK)) % BLOCK);
   for await (const s of entries) {
-    const { spill } = s.kind === 'file' ? await spillOf(s, temp, threshold, check) : { spill: undefined };
+    let spill: SpillSink | undefined;
+    let direct: AsyncIterator<Uint8Array> | undefined;
+    let first: IteratorResult<Uint8Array> | undefined;
+    let size = 0;
     try {
-      const size = spill?.length ?? 0;
+      if (s.kind === 'file') {
+        const content = await contentOf(s);
+        if (content.size === undefined) {
+          ({ spill } = await spillChunks(content.chunks, temp, threshold, check));
+          size = spill.length;
+        } else {
+          // The header can go first and the data straight after it. The first chunk is read before the header, so a
+          // stream that fails at once fails before its entry is begun, and a stream is open to close should the work stop.
+          size = content.size;
+          direct = checked(content.chunks, check)[Symbol.asyncIterator]();
+          first = await direct.next();
+        }
+      }
       const link = s.kind === 'symlink' ? (s.entry.linkTarget ?? '') : '';
       const mtime = Math.floor(s.mtime.getTime() / 1000);
       // What the ustar header cannot hold goes in a pax header before it.
@@ -405,13 +473,17 @@ async function* tarChunks(entries: AsyncIterable<Settled>, options: PackOptions,
       });
       yield h;
       written += h.length;
-      if (spill) {
-        yield* checked(spill.read(), check);
+      if (spill) yield* checked(spill.read(), check);
+      if (direct && first) {
+        for (let r: IteratorResult<Uint8Array> = first; !r.done; r = await direct.next()) yield r.value;
+      }
+      if (spill || direct) {
         const p = pad(size);
         if (p.length) yield p;
         written += size + p.length;
       }
     } finally {
+      await direct?.return?.(undefined);
       await spill?.dispose();
     }
   }
@@ -535,6 +607,14 @@ function compressChunks(format: CompressFormat, input: AsyncIterable<Uint8Array>
 const ARCHIVE_FORMATS = new Set<PackFormat>(['zip', 'tar', 'tar.gz', 'tar.bz2', 'tar.zst', 'tar.xz', '7z']);
 const TAR_COMPRESSION: Record<string, CompressFormat> = { 'tar.gz': 'gzip', 'tar.bz2': 'bzip2', 'tar.zst': 'zstd', 'tar.xz': 'xz' };
 
+/** Throws for a format `createArchive` does not write, and for `streaming` with any format but ZIP. */
+function checkFormat(format: PackFormat, options: PackOptions): void {
+  if (!ARCHIVE_FORMATS.has(format)) throw new PackError(`Unknown archive format ${String(format)}`);
+  // tar writes a file of known size as it arrives without the option, and needs the size of any other first. 7z writes
+  // its header from every entry after the data.
+  if (options.streaming && format !== 'zip') throw new PackError(`streaming writes ZIP archives only, not ${format}`);
+}
+
 /** Copies chunks to the sink, then closes it. On failure it aborts the sink, so a partial output never looks whole. */
 async function deliver(produce: () => Promise<void>, sink: ByteSink): Promise<void> {
   try {
@@ -556,9 +636,7 @@ async function deliver(produce: () => Promise<void>, sink: ByteSink): Promise<vo
  * sink is aborted instead of closed and the error is thrown.
  */
 export async function createArchive(format: PackFormat, entries: Iterable<PackEntry> | AsyncIterable<PackEntry>, sink: ByteSink, options: PackOptions = {}): Promise<void> {
-  if (!ARCHIVE_FORMATS.has(format)) throw new PackError(`Unknown archive format ${String(format)}`);
-  // tar needs each entry's size before its data, and 7z writes its header from every entry after the data.
-  if (options.streaming && format !== 'zip') throw new PackError(`streaming writes ZIP archives only, not ${format}`);
+  checkFormat(format, options);
   const now = new Date();
   const temp = new TempDir(options.tempDir);
   const check = () => options.signal?.throwIfAborted();
@@ -613,6 +691,115 @@ export async function createArchiveBytes(format: PackFormat, entries: Iterable<P
   const sink = bufferSink();
   await createArchive(format, entries, sink, options);
   return sink.result();
+}
+
+/** An archive that entries are added to one at a time, as archiver's `append` and `finalize` work. */
+export interface ArchiveWriter {
+  /**
+   * The archive as it is written, to read or pipe while entries are added. Entries wait in memory until it is read.
+   * An error destroys it, so a reader never takes a partial archive for a whole one.
+   */
+  readonly stream: Readable;
+  /**
+   * Adds an entry after the ones added before it. Its data is read when its turn comes, and a function given as its
+   * data is called then. Throws a PackError once `finish` or `abort` has been called or the archive has failed.
+   */
+  add(entry: PackEntry): void;
+  /**
+   * Says no more entries come. Resolves once the end of the archive is written to `stream`, and rejects with the error
+   * the archive failed on. The end is written only as `stream` is read, so keep reading it while this waits.
+   */
+  finish(): Promise<void>;
+  /** Stops the archive: `stream` is destroyed with `reason`, and `finish` rejects with it. Does nothing once it has finished. */
+  abort(reason?: unknown): void;
+}
+
+/**
+ * `createArchiveStream` for a caller that finds its entries as it goes. An entry `createArchive` refuses, or data that
+ * fails, fails the archive: `finish` rejects with the error and `stream` is destroyed with it.
+ */
+export function createArchiveWriter(format: PackFormat, options: PackOptions = {}): ArchiveWriter {
+  checkFormat(format, options);
+  const queue: Array<PackEntry | undefined> = [];
+  let head = 0;
+  let closed: 'finished' | 'aborted' | undefined;
+  let failure: { error: unknown } | undefined;
+  let wake: (() => void) | undefined;
+  const drop = () => {
+    queue.length = 0;
+    head = 0;
+  };
+  const stop = new AbortController();
+  const outer = options.signal;
+  const forward = () => stop.abort(outer?.reason);
+  if (outer?.aborted) forward();
+  else outer?.addEventListener('abort', forward, { once: true });
+
+  // The loop waits here for the next entry. The wait ends when the work stops, so a reader that goes away or an abort
+  // does not leave it waiting for an entry that never comes.
+  const nextEntry = (signal: AbortSignal) =>
+    new Promise<void>((resolve, reject) => {
+      const stopped = () => {
+        wake = undefined;
+        reject(signal.reason);
+      };
+      signal.addEventListener('abort', stopped, { once: true });
+      wake = () => {
+        signal.removeEventListener('abort', stopped);
+        wake = undefined;
+        resolve();
+      };
+    });
+  async function* entries(signal: AbortSignal): AsyncGenerator<PackEntry> {
+    for (;;) {
+      if (head < queue.length) {
+        const e = queue[head];
+        queue[head++] = undefined;
+        if (head === queue.length) drop();
+        if (e) yield e;
+        continue;
+      }
+      if (closed === 'finished') return;
+      signal.throwIfAborted();
+      await nextEntry(signal);
+    }
+  }
+
+  let done: Promise<void> = Promise.resolve();
+  const stream = readableOf((sink, signal) => {
+    done = createArchive(format, entries(signal), sink, { ...options, signal });
+    return done;
+  }, stop.signal);
+  done.then(
+    () => outer?.removeEventListener('abort', forward),
+    error => {
+      failure ??= { error };
+      drop();
+      outer?.removeEventListener('abort', forward);
+    },
+  );
+  return {
+    stream,
+    add(entry) {
+      if (closed) throw new PackError(`An entry was added after the archive was ${closed}`);
+      if (failure) throw new PackError('An entry was added after the archive failed', { cause: failure.error });
+      queue.push(entry);
+      wake?.();
+    },
+    finish() {
+      if (!closed) {
+        closed = 'finished';
+        wake?.();
+      }
+      return done;
+    },
+    abort(reason) {
+      if (closed === 'aborted') return;
+      closed = 'aborted';
+      drop();
+      stop.abort(reason);
+    },
+  };
 }
 
 /** Compresses `data` as one stream of `format` to `sink`, then closes it. */

@@ -115,26 +115,32 @@ export class ZipOutput {
   /**
    * Writes one entry whose sizes are known only once its data has gone out: a local header with the data descriptor
    * flag and no CRC or sizes, then `chunks`, the compressed data, then a data descriptor with the CRC and the sizes.
-   * `totals` gives the CRC and size of the uncompressed data once `chunks` has ended. An entry of 4 GiB or more gets
-   * eight-byte sizes in its descriptor and a ZIP64 field in the central directory, as archiver writes one.
+   * `totals` gives the CRC and size of the uncompressed data once `chunks` has ended.
+   *
+   * With `zip64`, the local header has a ZIP64 field, which tells a reader the descriptor's sizes are eight bytes. Its
+   * sizes are 0xFFFFFFFF and the field's are zero, as Python's zipfile writes a streamed entry. Without it, an entry of
+   * 4 GiB or more still gets eight-byte sizes in its descriptor, as archiver writes one. Either way, the central
+   * directory has a ZIP64 field only when a size or the offset needs one.
    */
-  async streamEntry(info: Written, chunks: AsyncIterable<Uint8Array>, totals: () => { crc: number; size: number }): Promise<void> {
+  async streamEntry(info: Written, chunks: AsyncIterable<Uint8Array>, totals: () => { crc: number; size: number }, zip64 = false): Promise<void> {
     const flags = info.flags | 0x0008;
+    const versionNeeded = zip64 ? Math.max(45, info.versionNeeded) : info.versionNeeded;
     const localOffset = this.offset;
     const local = new Builder()
       .u32(0x04034b50)
-      .u16(info.versionNeeded)
+      .u16(versionNeeded)
       .u16(flags)
       .u16(info.method)
       .u16(info.time)
       .u16(info.date)
       .u32(0)
-      .u32(0)
-      .u32(0)
+      .u32(zip64 ? MAX32 : 0)
+      .u32(zip64 ? MAX32 : 0)
       .u16(info.name.length)
-      .u16(info.extras.length)
-      .bytes(info.name)
-      .bytes(info.extras);
+      .u16(info.extras.length + (zip64 ? 20 : 0))
+      .bytes(info.name);
+    if (zip64) local.u16(0x0001).u16(16).u64(0).u64(0);
+    local.bytes(info.extras);
     await this.put(local.build());
     let compressedSize = 0;
     for await (const c of chunks) {
@@ -143,10 +149,10 @@ export class ZipOutput {
     }
     const { crc, size } = totals();
     const descriptor = new Builder().u32(0x08074b50).u32(crc);
-    if (size >= MAX32 || compressedSize >= MAX32) descriptor.u64(compressedSize).u64(size);
+    if (zip64 || size >= MAX32 || compressedSize >= MAX32) descriptor.u64(compressedSize).u64(size);
     else descriptor.u32(compressedSize).u32(size);
     await this.put(descriptor.build());
-    this.central.push(centralRecord({ ...info, flags, crc, size, compressedSize }, localOffset));
+    this.central.push(centralRecord({ ...info, versionNeeded, flags, crc, size, compressedSize }, localOffset));
   }
 
   /** Writes the central directory and the end records, with the archive's comment. */

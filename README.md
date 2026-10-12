@@ -303,13 +303,33 @@ const result = JSON.parse(await zip.text('result.json'));
 
 - `name`, with "/" between folders. A name that ends in "/" is a folder.
 - `data`: bytes, text written as UTF-8, a stream such as a Node Readable, or a function that returns one of those. A function runs when the entry's turn comes, so a thousand downloads do not all open at once.
+- `size`, a file's length in bytes, for a stream whose length you know, such as a GridFS file's. Content that comes to another size fails the archive.
 - `linkTarget` for a symbolic link, `mode` for the permission bits, `mtime` for the time, and `store: true` to keep a ZIP entry uncompressed, which the `mimetype` entry of an ODF document needs.
 
-ZIP, tar and 7z need an entry's size before its data, so an entry given as a stream is read first, into memory up to `memoryThreshold` (8 MiB) and into a temporary file past it. ZIP entries are deflated at `level` 6. ZIP and 7z store an entry that compression gains nothing on, or that would compress past `ratioLimit`, 1,000 to 1 by default, so their archives read back under the default limits. A compressed tar and the output of `compress` have no stored form. Content that compresses past 1,000 to 1, such as a long run of zeros, stops `openArchive`, `decompress` and the inspection with LIMIT/RATIO. Raise `limits.compressionRatio` to read it.
+ZIP and 7z need a file's CRC and sizes before its data, so a file given as a stream is read first, into memory up to `memoryThreshold` (8 MiB) and into a temporary file past it. tar needs only the size. Bytes, text and a stream with `size` go straight out, and only a stream without one is read first. ZIP entries are deflated at `level` 6. ZIP and 7z store an entry that compression gains nothing on, or that would compress past `ratioLimit`, 1,000 to 1 by default, so their archives read back under the default limits. A compressed tar and the output of `compress` have no stored form. Content that compresses past 1,000 to 1, such as a long run of zeros, stops `openArchive`, `decompress` and the inspection with LIMIT/RATIO. Raise `limits.compressionRatio` to read it.
 
-`streaming: true` writes a ZIP archive the way archiver does, with no temporary file. Each file is deflated as its data arrives and goes straight to the sink, and a data descriptor after the data carries its CRC and sizes. Only zlib's buffers are held. A file with `store: true` and a link's target are held in memory, because a stored entry keeps its sizes in its header, and an empty file is stored. Two things of the default mode are lost. A file deflate cannot shrink is deflated anyway, and `ratioLimit` does not apply, since the entry is out before its ratio is known. An entry of 4 GiB or more gets eight-byte sizes in its descriptor. tar and 7z need each entry's size before its data, so `streaming` writes ZIP only. A 26 MB sheet given one row per chunk takes 0.75 seconds this way, and 1.2 in the default mode.
+`streaming: true` writes a ZIP archive the way archiver does, with no temporary file. Each file is deflated as its data arrives and goes straight to the sink, and a data descriptor after the data carries its CRC and sizes. Only zlib's buffers are held. A file with `store: true` and a link's target are held in memory, because a stored entry keeps its sizes in its header, and an empty file is stored. Two things of the default mode are lost. A file deflate cannot shrink is deflated anyway, and `ratioLimit` does not apply, since the entry is out before its ratio is known. A file whose size is known, from `size` or because it is bytes or text, gets ZIP64 fields in its local header when deflating it could pass 4 GiB, which tells a reader the descriptor's sizes are eight bytes. A stream without a size gets none, because some readers refuse ZIP64 fields an entry does not need. If such a stream reaches 4 GiB, its descriptor holds eight-byte sizes anyway, as archiver writes it. tar needs no option to stream, and 7z writes its header from every entry after the data, so `streaming` writes ZIP only. A 26 MB sheet given one row per chunk takes 0.75 seconds this way, and 1.2 in the default mode.
 
 Small chunks of an entry are gathered into 64 KiB pieces before they are compressed, so data given one row at a time compresses as fast as data given in large pieces.
+
+**Adding entries as you go.** `createArchiveWriter(format, options)` takes entries one at a time, the way archiver's `append` and `finalize` do, for code that finds them as it goes. `add(entry)` queues an entry and returns at once, so a synchronous callback can call it. Entries go out in the order added, and each waits in memory until its turn. `finish()` says no more entries come, and resolves once the end of the archive is written. `abort(reason)` stops the archive. `stream` is the archive as a Readable. Read it while you add entries, because the end of the archive is written only as the stream is read. A refused name, a failed stream or an abort fails the archive. The writer destroys `stream` with the error, `finish` rejects with it, and a later `add` throws a PackError whose `cause` is the error.
+
+```js
+const { createArchiveWriter } = require('@patrickdk77/archive-defuse');
+
+const zip = createArchiveWriter('zip', { streaming: true });
+const sent = pipeline(zip.stream, res);
+try {
+  zip.add({ name: 'mimetype', data: 'application/vnd.oasis.opendocument.text', store: true });
+  // Each picture goes into the archive as layout finds it, before content.xml exists.
+  const xml = render(doc, picture => zip.add({ name: `Pictures/${picture.name}`, data: picture.bytes }));
+  zip.add({ name: 'content.xml', data: xml });
+  zip.finish();
+} catch (e) {
+  zip.abort(e);
+}
+await sent;
+```
 
 `createArchive` throws a PackError, before it writes the entry, for a name the inspection would change. That covers an empty name, a NUL, an absolute path, a drive letter, a `..` part with or without dots and spaces after it, an empty or `.` part, a backslash, a control character or one that reorders text, and a part Windows cannot create, such as `con.txt`, `report:v2.txt` or a part that ends in a dot or a space. It also refuses a name that leaves its folder once NFKC normalization or Windows best fit changes it. NFKC turns two fullwidth full stops, U+FF0E, into `..`. Best fit turns a yen sign, U+00A5, into a backslash when a program on Japanese Windows converts the name to code page 932. A name with a yen sign is still written unless that conversion takes it out of its folder. Duplicate names are written as given.
 
