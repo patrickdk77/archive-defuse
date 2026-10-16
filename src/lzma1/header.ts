@@ -1,4 +1,4 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * The 13-byte header of the `.lzma` ("LZMA_Alone") format:
  *

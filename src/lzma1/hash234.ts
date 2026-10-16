@@ -1,8 +1,10 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Hash tables of the last positions of 2-, 3- and 4-byte sequences.
  *
- * Ported from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/lz/Hash234.java` and
+ * `CRC32Hash.java` (the table itself comes from `crc32.ts`), by Lasse
+ * Collin and Igor Pavlov.
  */
 
 import { CRC32_TABLE } from './crc32';
@@ -12,6 +14,10 @@ const HASH_2_SIZE = 1 << 10;
 const HASH_2_MASK = HASH_2_SIZE - 1;
 const HASH_3_SIZE = 1 << 16;
 const HASH_3_MASK = HASH_3_SIZE - 1;
+
+// An int32 copy saves converting the exported table's unsigned numbers on
+// every read; measured faster in fast mode.
+const CRC32_TABLE_INT32 = Int32Array.from(CRC32_TABLE);
 
 function getHash4Size(dictSize: number): number {
   let h = dictSize - 1;
@@ -46,13 +52,13 @@ export class Hash234 {
   }
 
   calcHashes(buf: Uint8Array, off: number): void {
-    let temp = CRC32_TABLE[buf[off]] ^ buf[off + 1];
+    let temp = CRC32_TABLE_INT32[buf[off]] ^ buf[off + 1];
     this.hash2Value = temp & HASH_2_MASK;
 
     temp ^= buf[off + 2] << 8;
     this.hash3Value = temp & HASH_3_MASK;
 
-    temp ^= CRC32_TABLE[buf[off + 3]] << 5;
+    temp ^= CRC32_TABLE_INT32[buf[off + 3]] << 5;
     this.hash4Value = temp & this.hash4Mask;
   }
 

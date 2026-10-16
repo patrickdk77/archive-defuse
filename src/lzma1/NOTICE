@@ -1,36 +1,50 @@
-The files in this directory come from lzma1 by Filip Seman, https://github.com/xseman/lzma1, under the Apache
-License 2.0 in LICENSE here. They come from the fork on branch feat/lzma2-decoder at commit
-19f319c68ed898619393a579d126ce06e3d5d704, which is lzma1 0.4.0 plus raw LZMA1 and LZMA2 decoding. lzma1 ports them
-from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+The files in this directory come from lzma1 0.6.1 by Filip Seman, https://github.com/xseman/lzma1, under the Apache
+License 2.0 in LICENSE here. They are the sources of tag v0.6.1, commit fc19ffcd4022b37297760c5dfec9292edf5875cd,
+which match the src folder of lzma1-0.6.1.tgz on npm. lzma1 ports them from XZ for Java (0BSD) by Lasse Collin and
+Igor Pavlov.
+
+archive-defuse carries a copy instead of depending on the npm package. lzma1 0.6.1 exports only its high-level API,
+and archive-defuse drives the streaming LZMA and LZMA2 decoders and the raw encoder below it: it needs the input bytes
+the data took and what follows it, and it restarts one encoder for each LZMA2 chunk it writes. lzma1 is also an ES
+module only, and archive-defuse compiles to CommonJS for Node 18 and later.
 
 Copied: crc32.ts, hash234.ts, hc4.ts, header.ts, lz-decoder.ts, lz-encoder.ts, lzma-coder.ts, lzma-decoder.ts,
 lzma-encoder.ts, lzma-encoder-fast.ts, lzma2-decoder.ts, range-coder.ts, range-decoder.ts and range-encoder.ts.
 
-lzma-defuse changed them as follows, and the files then moved into archive-defuse unchanged.
+archive-defuse changed them as follows.
 
 In every file:
 - Biome reformatted it to this package's style, with spaces for tabs and single quotes for double.
 - Imports drop the ".js" suffix, since this package compiles to CommonJS.
-- A first line names lzma1, its license and this NOTICE.
+- A first line names lzma1 0.6.1, its license and this NOTICE.
 
-In lzma-decoder.ts and lzma-encoder.ts, the box-drawing characters around section comments are now "--", since this
-package keeps its files ASCII.
+This package's lint rules forbid assigning to a parameter, so these functions copy the parameter into a local
+variable first and work on the copy. The arithmetic is the same.
+- hc4.ts: skip().
+- lz-decoder.ts: repeat().
+- lz-encoder.ts: fillWindow().
+- lzma-encoder.ts: getNormalPrice() and getMatchedPrice() of the literal encoder, and encode() of the length encoder.
+- lzma2-decoder.ts: readChunkHeader(), decodeProps() and copyUncompressed().
+- range-decoder.ts: decodeDirectBits().
+- range-encoder.ts: getBitTreePrice(), getReverseBitTreePrice(), encodeReverseBitTree() and encodeDirectBits().
 
-In hc4.ts, lz-decoder.ts, lz-encoder.ts, lzma-encoder.ts, lzma2-decoder.ts and range-encoder.ts, each function that
-assigned to its own parameter now copies the parameter into a local variable first. This package's lint rules forbid
-the assignment. The arithmetic is the same.
+In lzma-decoder.ts, the matched literal loop builds its mask with -bit where lzma1 writes (0 - bit). The lint rules
+read 0 - x as a type conversion. Both give 0 or -1 for a bit.
+
+In lzma-encoder.ts:
+- The empty body of the loop in encode() holds a comment.
+- The import of State from lzma-coder.ts is gone, since nothing in the file uses it and the compiler refuses unused
+  imports.
 
 In lzma-encoder-fast.ts:
 - getNextSymbol() throws if no matches were read, where it used a non-null assertion.
 - A chained assignment is now two assignments.
 
-In lzma-encoder.ts, the empty body of the loop in encode() holds a comment.
-
 In lzma2-decoder.ts:
 - The file defines INPUT_MARGIN itself instead of importing it from alone-decoder.ts, which this package does not
-  copy. The value is still 64.
+  copy. The value is lzma1's, 64.
 - A private method, currentLzma(), returns the LZMA decoder or throws "LZMA2 chunk without properties". It replaces
   two non-null assertions.
 
-crc32.ts, hash234.ts, header.ts, lzma-coder.ts, lzma-decoder.ts, range-coder.ts and range-decoder.ts have no changes
-beyond formatting and imports.
+crc32.ts, hash234.ts, header.ts, lzma-coder.ts, range-coder.ts have no changes beyond formatting, imports and the
+first line.

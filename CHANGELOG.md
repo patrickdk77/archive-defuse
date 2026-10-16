@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 - 2026-10-16
+
+- The LZMA code in `src/lzma1` now comes from lzma1 0.6.1, the release that took in the raw LZMA1 and LZMA2 decoders this package used to carry from a fork. The encoder writes the same bytes as before, so 7z, xz and .lzma output does not change. NOTICE lists what changed in the copy, and why it is a copy and not a dependency.
+
 ## 0.1.2 - 2026-10-11
 
 - `createArchiveWriter` makes an archive from entries added one at a time, for code that finds them as it goes, as archiver's `append` and `finalize` do. `add` returns at once, `finish` resolves once the end of the archive is written, and `abort` stops it.

@@ -1,9 +1,10 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Fast LZMA encoder: picks symbols with simple heuristics, similar to a
  * lazy-matching LZ77 encoder.
  *
- * Ported from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/lzma/LZMAEncoderFast.java`,
+ * by Lasse Collin and Igor Pavlov.
  */
 
 import type { Matches } from './lz-encoder';

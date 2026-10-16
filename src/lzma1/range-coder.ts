@@ -1,6 +1,10 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Constants shared by the range encoder and decoder.
+ *
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/rangecoder/RangeCoder.java`,
+ * by Lasse Collin and Igor Pavlov. The Java code's `(range & TOP_MASK) == 0`
+ * test appears here as the unsigned comparison `range < TOP_VALUE`.
  *
  * LZMA's entropy coder is a binary range coder: every coded bit has an
  * adaptive probability (an 11-bit integer, the chance that the bit is 0)

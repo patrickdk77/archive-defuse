@@ -1,4 +1,4 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Decoder for raw LZMA2 data, the chunked format inside `.xz` blocks and
  * 7z LZMA2 entries. LZMA2 has no header of its own. The container stores
@@ -33,27 +33,29 @@
  * they arrive and decodes an LZMA chunk once its compressed data, at most
  * 64 KiB, is complete.
  *
- * Ported from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/LZMA2InputStream.java`,
+ * with `rangecoder/RangeDecoderFromBuffer.java` and the LZMA2-only methods of
+ * `lz/LZDecoder.java` as functions, by Lasse Collin and Igor Pavlov.
  */
 
 import { LzDecoder } from './lz-decoder';
 import { LzmaDecoder } from './lzma-decoder';
-import { RangeDecoderFromBuffer } from './range-decoder';
-
-const COMPRESSED_SIZE_MAX = 1 << 16;
+import { RANGE_DECODER_INIT_SIZE, RangeDecoder } from './range-decoder';
 
 /**
- * Upper bound of input bytes a single symbol can consume. The value of
- * `INPUT_MARGIN` in lzma1's alone-decoder.ts, which lzma-defuse does not carry.
+ * Input kept back while a chunk is decoded, as `INPUT_MARGIN` in lzma1's alone-decoder.ts, which archive-defuse does
+ * not carry. The value is lzma1's.
  */
 const INPUT_MARGIN = 64;
+
+const COMPRESSED_SIZE_MAX = 1 << 16;
 
 /** Largest chunk header: control byte, two sizes and the properties. */
 const CHUNK_HEADER_SIZE_MAX = 6;
 
 export class Lzma2Decoder {
   private readonly lz: LzDecoder;
-  private readonly rc = new RangeDecoderFromBuffer();
+  private readonly rc = new RangeDecoder();
   private lzma: LzmaDecoder | null = null;
 
   private uncompressedSize = 0;
@@ -94,7 +96,7 @@ export class Lzma2Decoder {
    * Approximate memory needed to decode, in KiB, as XZ for Java's
    * `LZMA2InputStream.getMemoryUsage` computes it.
    */
-  static getMemoryUsage(dictSize: number): number {
+  static getMemoryUsageKb(dictSize: number): number {
     // The base state is around 30-40 KiB (probabilities etc.), the range
     // decoder needs COMPRESSED_SIZE_MAX bytes for buffering, and the LZ
     // decoder needs a dictionary buffer.
@@ -113,7 +115,7 @@ export class Lzma2Decoder {
 
       if (!this.isLzmaChunk) {
         const copySize = Math.min(this.uncompressedSize, input.length - pos);
-        this.lz.copyUncompressed(input, pos, copySize);
+        copyUncompressed(this.lz, input, pos, copySize);
         pos += copySize;
         this.outPos += copySize;
         this.uncompressedSize -= copySize;
@@ -140,9 +142,9 @@ export class Lzma2Decoder {
   }
 
   /** Collects the chunk header and decodes it once it is complete. */
-  private readChunkHeader(input: Uint8Array, start: number): number {
+  private readChunkHeader(input: Uint8Array, posIn: number): number {
+    let pos = posIn;
     const header = this.header;
-    let pos = start;
     header[this.headerPos++] = input[pos++];
 
     const size = chunkHeaderSize(header[0]);
@@ -170,7 +172,7 @@ export class Lzma2Decoder {
     if (control >= 0xe0 || control === 0x01) {
       this.needProps = true;
       this.needDictReset = false;
-      this.lz.reset();
+      resetDictionary(this.lz);
       this.outPos = 0;
     } else if (this.needDictReset) {
       throw new Error("Corrupted input: the first LZMA2 chunk doesn't reset the dictionary");
@@ -203,8 +205,8 @@ export class Lzma2Decoder {
     }
   }
 
-  private decodeProps(byte: number): void {
-    let props = byte;
+  private decodeProps(propsIn: number): void {
+    let props = propsIn;
     if (props > (4 * 5 + 4) * 9 + 8) {
       throw new Error('Corrupted input: invalid LZMA2 properties');
     }
@@ -231,7 +233,7 @@ export class Lzma2Decoder {
     const lzma = this.currentLzma();
     const outLimit = this.outPos + this.uncompressedSize;
 
-    this.rc.prepareInputBuffer(this.inBuf, this.compressedSize);
+    prepareInputBuffer(this.rc, this.inBuf, this.compressedSize);
     lzma.outPos = this.outPos;
     lzma.decode(outLimit, this.compressedSize);
 
@@ -239,13 +241,71 @@ export class Lzma2Decoder {
     // chunk's data or decodes an end marker. XZ for Java throws in both
     // cases. A match that would cross the chunk's end throws in
     // `decode`, which XZ for Java detects with `lz.hasPending()`.
-    if (lzma.outPos !== outLimit || !this.rc.isFinished()) {
+    if (lzma.outPos !== outLimit || !isChunkFinished(this.rc, this.compressedSize)) {
       throw new Error("Corrupted input: LZMA2 chunk doesn't match its sizes");
     }
 
     this.outPos = outLimit;
     this.uncompressedSize = 0;
   }
+}
+
+/**
+ * Copies `len` bytes of uncompressed data from `input` at `inPos` into the
+ * dictionary: `LZDecoder.copyUncompressed`. XZ for Java copies up to the end
+ * of the buffer and leaves the rest to its caller; this copy continues past
+ * the end like `repeat`.
+ */
+export function copyUncompressed(lz: LzDecoder, input: Uint8Array, inPosIn: number, lenIn: number): void {
+  let inPos = inPosIn;
+  let len = lenIn;
+  while (len > 0) {
+    const copySize = Math.min(lz.buf.length - lz.pos, len);
+    lz.buf.set(input.subarray(inPos, inPos + copySize), lz.pos);
+    lz.pos += copySize;
+    inPos += copySize;
+    len -= copySize;
+
+    if (lz.pos === lz.buf.length) {
+      lz.onBufferEnd();
+    }
+  }
+}
+
+/**
+ * Empties the dictionary, so matches can't reach back before this point:
+ * `LZDecoder.reset`.
+ */
+export function resetDictionary(lz: LzDecoder): void {
+  // In XZ for Java the caller flushes first. Here the sink has to get the
+  // pending bytes before the positions restart, or they are lost.
+  lz.flush();
+  lz.start = 0;
+  lz.pos = 0;
+  lz.wrapped = false;
+  // getByte(0) has to return 0x00 when nothing has been decoded.
+  lz.buf[lz.buf.length - 1] = 0x00;
+}
+
+/**
+ * Starts decoding the `len` bytes of chunk data at the start of `input`:
+ * `RangeDecoderFromBuffer.prepareInputBuffer`. Every LZMA chunk starts a new
+ * range coder.
+ */
+function prepareInputBuffer(rc: RangeDecoder, input: Uint8Array, len: number): void {
+  if (len < RANGE_DECODER_INIT_SIZE) {
+    throw new Error('Corrupted input: LZMA2 chunk is too short');
+  }
+
+  rc.init(input, 0);
+}
+
+/**
+ * True when the chunk's `len` bytes have been consumed exactly and the range
+ * coder is finished: `RangeDecoderFromBuffer.isFinished`.
+ */
+function isChunkFinished(rc: RangeDecoder, len: number): boolean {
+  return rc.pos === len && rc.code === 0;
 }
 
 /** Size of the chunk header that starts with `control`. */

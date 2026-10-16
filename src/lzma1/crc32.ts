@@ -1,6 +1,7 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
- * CRC-32 (IEEE 802.3) lookup table. The match finders use it for hashing.
+ * CRC-32 (IEEE 802.3) lookup table. The match finders hash with a copy of
+ * it, so changing this array does not affect compression.
  */
 export const CRC32_TABLE: number[] = createCrc32Table();
 

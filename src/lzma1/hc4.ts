@@ -1,11 +1,12 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Hash chain match finder with 2-, 3- and 4-byte hashing.
  *
  * Every position links to the previous position with the same 4-byte hash.
  * Faster than the binary tree finder but finds fewer long matches.
  *
- * Ported from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/lz/HC4.java`, by
+ * Lasse Collin and Igor Pavlov.
  */
 
 import { Hash234 } from './hash234';
@@ -131,8 +132,9 @@ export class HC4 extends LzEncoder {
     }
   }
 
-  skip(len: number): void {
-    for (let left = len; left > 0; --left) {
+  skip(lenIn: number): void {
+    let len = lenIn;
+    while (len-- > 0) {
       if (this.movePosition() !== 0) {
         this.hash.calcHashes(this.buf, this.readPos);
         this.chain[this.cyclicPos] = this.hash.getHash4Pos();

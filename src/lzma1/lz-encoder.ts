@@ -1,4 +1,4 @@
-// Copied from lzma1 (Apache-2.0, Copyright Filip Seman) and changed for lzma-defuse. NOTICE in this folder lists the changes.
+// Copied from lzma1 0.6.1 (Apache-2.0, Copyright Filip Seman) and changed for archive-defuse. NOTICE in this folder lists the changes.
 /**
  * Encoder-side LZ window and the base class of the match finders.
  *
@@ -7,7 +7,8 @@
  * read position gets close to the end of the buffer, the window is moved
  * back to the start of the buffer.
  *
- * Ported from XZ for Java (0BSD) by Lasse Collin and Igor Pavlov.
+ * Ported from XZ for Java (0BSD), `src/org/tukaani/xz/lz/LZEncoder.java`,
+ * `Matches.java` and `MatchLength.java`, by Lasse Collin and Igor Pavlov.
  */
 
 export type MatchFinderType = 'hc4' | 'bt4';
@@ -111,12 +112,13 @@ export abstract class LzEncoder {
    *
    * @returns number of bytes consumed; call again with the rest
    */
-  fillWindow(input: Uint8Array, off: number, length: number): number {
+  fillWindow(input: Uint8Array, off: number, lenIn: number): number {
+    let len = lenIn;
     if (this.readPos >= this.buf.length - this.keepSizeAfter) {
       this.moveWindow();
     }
 
-    const len = Math.min(length, this.buf.length - this.writePos);
+    len = Math.min(len, this.buf.length - this.writePos);
     this.buf.set(input.subarray(off, off + len), this.writePos);
     this.writePos += len;
 

@@ -396,4 +396,4 @@ npm run format
 
 ## License
 
-MIT AND Apache-2.0. The package is MIT, in LICENSE. The LZMA and LZMA2 decoders and the LZMA encoder in `src/lzma1` come from lzma1 by Filip Seman, under the Apache License 2.0. Its text and a NOTICE that lists what changed sit next to them, and both ship in `dist/lzma1`. lzma1 ports that code from XZ for Java, which is 0BSD. The branch converters and the delta filter are ported from XZ for Java directly.
+MIT AND Apache-2.0. The package is MIT, in LICENSE. The LZMA and LZMA2 decoders and the LZMA encoder in `src/lzma1` come from lzma1 0.6.1 by Filip Seman, under the Apache License 2.0. Its text and a NOTICE that lists what changed sit next to them, and both ship in `dist/lzma1`. lzma1 ports that code from XZ for Java, which is 0BSD. The branch converters and the delta filter are ported from XZ for Java directly.
