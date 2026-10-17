@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-10-17
+
+- The tar reader keeps a pax archive's global records in `globalRecords`, not `global`. Security scanners match Node's global names in built code. Nothing else changes.
+
 ## 0.2.0 - 2026-10-17
 
 - ENTRY/PLUGIN_PASSED and PLUGIN_SCRUBBED weigh 0, in the upload's score and the output's. The output's score counted them at 20 and 10, so an archive of files a plugin found nothing in scored LOW after defusing. An entry a plugin kept now scores what the plugin found in it.

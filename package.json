@@ -1,6 +1,6 @@
 {
   "name": "@patrickdk77/archive-defuse",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Sanitize zip, tar, gzip, bzip2, zstd, Brotli, cab, 7z, xz and lzma archives. Detects path traversal, links out of the tree, device files, duplicate names, overlapping entries, hidden and prepended data, encrypted entries and compression bombs, hands every entry to file plugins, scores the risk, and writes a defused archive in the same format with no runtime dependencies.",
   "license": "MIT AND Apache-2.0",
   "author": "patrickdk77",

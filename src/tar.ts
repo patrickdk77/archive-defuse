@@ -148,7 +148,7 @@ export class TarArchive implements Archive<TarEntry> {
     const reader = new Reader(source, size);
     const notes: Note[] = [];
     const entries: TarEntry[] = [];
-    let global: PaxRecord[] = [];
+    let globalRecords: PaxRecord[] = [];
     let pending: Pending = { pax: [] };
     let pos = 0;
     let total = 0;
@@ -210,7 +210,7 @@ export class TarArchive implements Archive<TarEntry> {
         if (typeflag === 'g') {
           // Later global records replace earlier ones of the same key.
           const keys = new Set(parsed.records.map(r => r.key));
-          global = [...global.filter(r => !keys.has(r.key)), ...parsed.records];
+          globalRecords = [...globalRecords.filter(r => !keys.has(r.key)), ...parsed.records];
           const c = parsed.records.find(r => r.key === 'comment');
           if (c) comment = c.value.toString('utf8');
         } else pending.pax.push(...parsed.records);
@@ -231,7 +231,7 @@ export class TarArchive implements Archive<TarEntry> {
         continue;
       }
       // The records that apply: global ones, then this entry's own, the later winning.
-      const records = [...global.filter(g => !pending.pax.some(r => r.key === g.key)), ...pending.pax];
+      const records = [...globalRecords.filter(g => !pending.pax.some(r => r.key === g.key)), ...pending.pax];
       const last = (key: string) => {
         let found: PaxRecord | undefined;
         for (const r of records) if (r.key === key) found = r;
@@ -308,7 +308,7 @@ export class TarArchive implements Archive<TarEntry> {
         devmajor: posix || ustar === 'ustar ' ? num(329, 8, 'devmajor') : 0,
         devminor: posix || ustar === 'ustar ' ? num(337, 8, 'devminor') : 0,
         // Global records apply to every entry after them, so each entry keeps its own copy. A global comment is the archive's.
-        pax: records.filter(r => !isStructural(r.key) && !(r.key === 'comment' && global.includes(r))),
+        pax: records.filter(r => !isStructural(r.key) && !(r.key === 'comment' && globalRecords.includes(r))),
       };
       if (kind === 'symlink' || kind === 'hardlink') e.linkTarget = linkTarget;
       if (kind === 'other') e.typeCode = `tar type ${JSON.stringify(typeflag)}`;
