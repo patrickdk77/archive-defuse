@@ -175,6 +175,8 @@ Every file entry goes to `filePlugins` in order, with pdf-defuse's shapes. A plu
 
 The plugin's findings come into the report with `attachment` set to the entry's name. A `reject` inside the entry becomes `strip`, since the entry goes and the archive stays. When no plugin accepts an entry, ENTRY/NO_PLUGIN removes it. As `info`, the entry stays.
 
+A plugin's answer is final, and its findings are all the entry adds to the score. ENTRY/PLUGIN_PASSED and PLUGIN_SCRUBBED weigh 0, in the upload's score and the output's. ENTRY/PLUGIN_FAILED weighs 30, what NO_PLUGIN weighs, since no plugin answered for the entry.
+
 Before the plugins, a type check reports ENTRY/TYPE_MISMATCH (`info`) when the name's extension and the content disagree, as pdf-defuse does for attached files. A plugin never checks types.
 
 `passThrough(types)` keeps entries by MIME type or extension, such as `passThrough(['text/csv', '.txt'])`.

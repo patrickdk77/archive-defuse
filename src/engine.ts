@@ -69,7 +69,6 @@ async function endRun(run: Run): Promise<void> {
   }
 }
 
-const PLUGIN_KEPT = new Set<string>([D.PluginPassed, D.PluginScrubbed]);
 /** Kinds whose content the rewrite drops whatever their action, so an info override leaves CONTENT_REMOVED. */
 const DROPPED_ANYWAY = new Set<string>([D.HiddenData, D.NonFileData, D.ExtraField]);
 
@@ -83,7 +82,9 @@ function finish(findings: DefuseFinding[], options: ArchiveOptions, incomplete: 
   const rejected = findings.some(f => f.action === 'reject');
   // In an upload, a plugin rewrite or a metadata strip changes the file, so the output must be written.
   const strippable = findings.some(f => f.action === 'strip' || (!isOutput && (f.detail === D.PluginScrubbed || f.detail === D.Stripped) && f.attachment === undefined));
-  const { score, risk } = scoreFindings(isOutput ? findings : findings.filter(f => !PLUGIN_KEPT.has(f.detail)), options);
+  // What a plugin decided counts at the weights of the plugin's own findings; the PLUGIN_* findings that record its
+  // answer weigh nothing.
+  const { score, risk } = scoreFindings(findings, options);
   return { status: rejected ? 'rejected' : strippable ? 'strippable' : 'clean', score, risk, findings, ...named };
 }
 

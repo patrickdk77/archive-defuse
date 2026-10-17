@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 - 2026-10-17
+
+- ENTRY/PLUGIN_PASSED and PLUGIN_SCRUBBED weigh 0, in the upload's score and the output's. The output's score counted them at 20 and 10, so an archive of files a plugin found nothing in scored LOW after defusing. An entry a plugin kept now scores what the plugin found in it.
+- ENTRY/PLUGIN_FAILED weighs 30, what ENTRY/NO_PLUGIN weighs, since no plugin answered for the entry. It weighed 0.
+
 ## 0.1.3 - 2026-10-16
 
 - The LZMA code in `src/lzma1` now comes from lzma1 0.6.1, the release that took in the raw LZMA1 and LZMA2 decoders this package used to carry from a fork. The encoder writes the same bytes as before, so 7z, xz and .lzma output does not change. NOTICE lists what changed in the copy, and why it is a copy and not a dependency.

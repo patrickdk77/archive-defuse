@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { archivePlugin, bufferSink, bufferSource, type ContainedFile, type ContainedFilePlugin, disarmArchive, inspectArchive, type PluginContext, passThrough } from '../src';
+import { weightOf } from '../src/score';
 import { build, failure, fixture, keepAll, kinds, line, must, of, pythonList } from './helpers/util';
 
 const { zip, text, tar, tarEntry, gzipMember } = build;
@@ -60,6 +61,8 @@ describe('file plugins', () => {
       'strip X/Z in keep.txt',
     ]);
     expect(of(r.before, 'X/Z')[0].location).to.equal('entry "keep.txt" > part 1');
+    // No plugin answered for the entries whose plugin failed, so they weigh what an entry no plugin accepts does.
+    expect(of(r.before, 'ENTRY/PLUGIN_FAILED').map(f => weightOf(f, {}))).to.deep.equal([30, 30]);
     expect(pythonList('zip', must(r.bytes, 'output'))).to.deep.equal([['keep.txt', 'file', pythonList('zip', zip([{ name: 'keep.txt', data: 'replaced' }]))[0][2]]]);
   });
 
@@ -102,7 +105,7 @@ describe('archivePlugin', () => {
     const findings = typeof r === 'string' ? [] : (r.findings ?? []);
     expect(findings.map(f => [f.category, f.detail, f.weight])).to.deep.equal([
       ['NAME', 'TRAVERSAL', 70],
-      ['ENTRY', 'PLUGIN_PASSED', 20],
+      ['ENTRY', 'PLUGIN_PASSED', 0],
     ]);
     expect(pythonList('zip', sink.result()).map(e => e[0])).to.deep.equal(['up.txt']);
   });

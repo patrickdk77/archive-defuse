@@ -109,9 +109,9 @@ def(
   40,
   'The types of <entry "{name}"|an unnamed entry> disagree: <its name says {nameType}|its name has no known extension>, and <its content looks like {sniffed}|its content is not recognized>',
 );
-def(C.Entry, D.PluginPassed, 'info', 20, 'Entry kept by plugin <plugin> with nothing removed');
-def(C.Entry, D.PluginScrubbed, 'info', 10, 'Entry cleaned and kept by plugin <plugin>');
-def(C.Entry, D.PluginFailed, 'strip', 0, 'Plugin <plugin> failed, so the entry was removed');
+def(C.Entry, D.PluginPassed, 'info', 0, 'Entry kept by plugin <plugin> with nothing removed');
+def(C.Entry, D.PluginScrubbed, 'info', 0, 'Entry cleaned and kept by plugin <plugin>');
+def(C.Entry, D.PluginFailed, 'strip', 30, 'Plugin <plugin> failed, so the entry was removed');
 def(C.Entry, D.PluginRemoved, 'strip', 0, 'Entry removed by plugin <plugin>');
 // METADATA
 def(C.Metadata, D.Comment, 'info', 0, 'The archive or an entry carries a comment');
